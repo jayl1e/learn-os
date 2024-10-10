@@ -1,6 +1,10 @@
 PROFILE ?= release
 build:
+ifeq ($(PROFILE), debug)
+	cargo build
+else
 	cargo build --$(PROFILE)
+endif
 	rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/$(PROFILE)/os -O binary target/riscv64gc-unknown-none-elf/$(PROFILE)/os.bin
 
 run: build
