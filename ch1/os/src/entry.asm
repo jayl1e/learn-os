@@ -3,10 +3,12 @@
 _start:
     la sp, boot_stack_top
     call rust_main
-    
+
     .section .bss.stack
-    .global boot_stack_lower_bound
-boot_stack_lower_bound:
-    .space 4096*16
+    .global boot_stack_bottom
+
+boot_stack_bottom:
+    .space 4096 * 16
+    
     .global boot_stack_top
 boot_stack_top:
