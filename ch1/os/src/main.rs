@@ -29,7 +29,3 @@ fn clear_bss(){
     });
 }
 
-
-fn main() {
-}
-

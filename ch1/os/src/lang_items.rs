@@ -3,7 +3,6 @@ use core::panic::PanicInfo;
 use crate::println;
 
 use super::sbi::shut_down;
-use super::console;
 
 #[panic_handler]
 fn panic(info: &PanicInfo)->!{
