@@ -31,3 +31,10 @@ path = "src/bin/00hello.rs"
 test = false
 doctest = false
 bench = false
+
+[[bin]]
+name = "01print_stack"
+path = "src/bin/01print_stack.rs"
+test = false
+doctest = false
+bench = false

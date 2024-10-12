@@ -5,6 +5,7 @@ use user_lib::{self, println};
 
 #[no_mangle]
 fn main()->i32{
-    println!("hello world");
+    println!("hello");
+    println!("world");
     0
 }
