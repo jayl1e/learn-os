@@ -5,7 +5,9 @@ use super::sbi;
 struct Stdout;
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        s.chars().for_each(|c|{sbi::console_put_char(c as usize)});
+        for c in s.chars(){
+                sbi::console_put_char(c as usize);
+        }
         Ok(())
     }
 }
