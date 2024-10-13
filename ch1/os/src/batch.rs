@@ -1,4 +1,4 @@
-use core::{arch::asm, mem};
+use core::{arch::asm, mem, ffi};
 
 use lazy_static::lazy_static;
 
@@ -41,45 +41,72 @@ impl UserStack {
 static KERNEL_STACK:KernelStack = KernelStack{data:[0;KERNEL_STACK_LIMIT]};
 static USER_STACK:UserStack = UserStack{data:[0;USER_STACK_LIMIT]};
 
+#[derive(Debug, Clone, Copy)]
+struct AppInfoBuf{
+    name: usize,
+    start: usize,
+    end: usize,
+}
 
+pub struct AppInfo{
+    pub name: &'static str,
+    mem: &'static [u8]
+}
 
+#[repr(C)]
 struct AppManager{
     num_app: usize,
-    next_app: usize,
-    app_start: [usize;MAX_APP_NUM+1],
+    current_app: usize,
+    app_infos: [AppInfoBuf;MAX_APP_NUM],
 }
 
 impl AppManager {
     pub fn get_current_app(&self)->usize{
-        self.next_app
+        self.current_app
     }
     pub fn print_apps_info(&self){
+        println!("sizeof AppInfoBuf is {}", size_of::<AppInfoBuf>());
         println!("[kernel] num_app = {}", self.num_app);
         for i in 1..=self.num_app{
-            println!(
-                "[kernel] app_{} [{:#x}, {:#x}]",
-                i,
-                self.app_start[i],
-                self.app_start[i+1]
-            );
+            self.print_app_info(i);
         }
+        println!("[kernel] apps are above");
+    }
+    fn print_app_info(&self, i:usize){
+        let app = unsafe {self.get_app_info(i)};
+        println!(
+            "[kernel] app_{} [{:p}, {:p}], named: {}",
+            i,
+            app.mem.as_ptr_range().start,
+            app.mem.as_ptr_range().end,
+            app.name
+        )
     }
     pub fn move_to_next_app(&mut self)->bool{
-        if self.next_app>=self.num_app{
+        if self.current_app>=self.num_app{
             false
         }else{
-            self.next_app+=1;
+            self.current_app+=1;
             true
         }
     }
+
+    unsafe fn get_app_info(&self, app_id:usize)->AppInfo{
+        let ref a = self.app_infos[app_id-1];
+        let app_src =
+            core::slice::from_raw_parts(a.start as *const u8, a.end- a.start);
+        let app_name = ffi::CStr::from_ptr(a.name as *const i8).to_str().unwrap();
+        AppInfo { name: app_name, mem: app_src}
+    }
+
     pub unsafe fn load_app(&self, app_id:usize){
-        if app_id>=self.num_app{
+        if app_id>self.num_app{
             panic!("bad app id to load");
         }
-        println!("[kernel] loading app_{}", app_id+1);
+        println!("[kernel] loading app_{}", app_id);
         let app_dst = core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT);
         app_dst.fill(0);
-        let app_src = core::slice::from_raw_parts(self.app_start[app_id] as *const u8, self.app_start[app_id+1]- self.app_start[app_id]);
+        let app_src = self.get_app_info(app_id).mem;
         app_dst[..app_src.len()].copy_from_slice(app_src);
         asm!("fence.i");
     }
@@ -92,19 +119,20 @@ lazy_static!{
         }
         let num_app_ptr = _num_app as *const usize;
         let num_app = num_app_ptr.read_volatile();
-        let mut app_start = [0;MAX_APP_NUM+1];
-        let app_start_raw = core::slice::from_raw_parts(num_app_ptr.add(1), num_app+1);
-        app_start[..=num_app].copy_from_slice(app_start_raw);
+        let mut app_infos = [AppInfoBuf{name:0, start:0, end:0};MAX_APP_NUM];
+        let app_info_raw = core::slice::from_raw_parts(num_app_ptr.add(1) as *const AppInfoBuf, num_app);
+        app_infos[..num_app].copy_from_slice(app_info_raw);
         UPSafeCell::new(AppManager{
             num_app,
-            next_app:0,
-            app_start
+            current_app:0,
+            app_infos
         })
     };
 }
 
 pub fn init(){
     print_apps_info();
+    
 }
 
 pub fn print_apps_info(){
@@ -113,14 +141,13 @@ pub fn print_apps_info(){
     
 pub fn run_next_app()->!{
     let mut m = APP_MANAGER.exclusive_access();
-    let current = m.get_current_app();
     if !m.move_to_next_app(){
         println!("[kernel] finished all app, shutting down");
         shut_down(false)
     }
     extern "C"{fn __restore(ctx_ptr: usize)->!;}
     unsafe {
-        m.load_app(current);
+        m.load_app(m.get_current_app());
     }
     //function never return, the destructor wont work, drop it manually
     drop(m);
@@ -134,5 +161,11 @@ pub fn run_next_app()->!{
     }
 }
 
+pub fn get_current_app()->AppInfo{
+    let m = APP_MANAGER.exclusive_access();
+    unsafe {
+        m.get_app_info(m.get_current_app())
+    }
+}
     
 

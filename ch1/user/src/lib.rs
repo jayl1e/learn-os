@@ -31,3 +31,11 @@ fn main()->i32{
 
 pub fn write(fd: usize, buf: &[u8]) -> isize { syscall::sys_write(fd, buf) }
 pub fn exit(exit_code: i32) -> isize { syscall::sys_exit(exit_code) }
+pub fn get_task_info(name_buf: &mut [u8]) -> Option<&str> {
+    let l = syscall::sys_get_task_info(name_buf);
+    if l<0{
+        return None
+    }
+    let name = core::str::from_utf8(&name_buf[..(l as usize)]).unwrap();
+    Some(name)
+}
