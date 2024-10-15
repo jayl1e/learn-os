@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 
 use crate::println;
+use crate::sbi::shut_down;
 use crate::sync::up::UPSafeCell;
 use crate::loader::{get_num_app, AppInfo, MAX_APP_NUM, get_app_info, init_app_cx};
 
@@ -68,6 +69,7 @@ impl TaskManager {
 
     fn run_next_task(&self){
         if let Some(next) = self.find_next_task() {
+            println!("[kernel] scheduling app {}", next);
             let mut m = self.inner.exclusive_access();
             let current = m.current;
             m.current = next;
@@ -75,11 +77,13 @@ impl TaskManager {
             let cur = &mut m.tasks[current].cx as *mut TaskContext;
             let nxt = &mut m.tasks[next].cx as *const TaskContext;
             drop(m);
+
             unsafe {
-                __switch(cur,nxt)
+                __switch(cur,nxt);
             }
         }else{
-            panic!("all application exited")
+            println!("[kernel] all apps exited, will shutdown");
+            shut_down(false)
         }
     }
 
@@ -91,7 +95,6 @@ impl TaskManager {
                 return Some(idx)
             }
         }
-        println!("line -1: {}", line!());
         None
     }
 
@@ -102,20 +105,19 @@ impl TaskManager {
         m.tasks[current].status = TaskStatus::RUNNING;
         let nxt=&m.tasks[current].cx;
         let next = nxt as *const TaskContext;
-
-        //todo debug
-        println!("next exec is ra:{:X}, ksp:{:X}",nxt.ra, nxt.sp);
-
         drop(m);
 
+        println!("[kernel] scheduling app {}", current);
         let mut unused_buf: TaskContext=TaskContext::zero_init();
         let unused = &mut unused_buf as *mut TaskContext;
         unsafe {
-            __switch(unused, next)
+            __switch(unused, next);
         }
+        panic!("should shutdown after all apps exited")
     }
 
 }
+
 
 pub fn get_current_app()->AppInfo{
     let cur = TASK_MANAGER.inner.exclusive_access().current;
