@@ -3,8 +3,7 @@ pub mod context;
 use core::arch::global_asm;
 use riscv::register::{scause::{self, Exception, Trap}, stval, stvec};
 use context::TrapContext;
-use crate::{println,syscall::syscall};
-use crate::batch::run_next_app;
+use crate::{println,syscall::syscall, task::exit_current_task};
 
 global_asm!(include_str!("trap.asm"));
 
@@ -29,13 +28,13 @@ pub fn trap_handler(cx: &mut TrapContext)->&mut TrapContext{
                 }
                 None=>{
                     println!("[kernel] bad syscall, killing process");
-                    run_next_app()
+                    exit_current_task();
                 }
             }
         },
         Trap::Exception(_)=>{
             println!("[kernel] process exception, killing process");
-            run_next_app()
+            exit_current_task();
         },
         Trap::Interrupt(_)=>{
             panic!("unsupported interrupt: scause {:?}, stval {}", scause.cause(), stval)

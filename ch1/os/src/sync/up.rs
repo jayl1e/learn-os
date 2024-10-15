@@ -1,5 +1,7 @@
 use core::cell::{RefCell, RefMut};
 
+use crate::println;
+
 pub struct UPSafeCell<T>{
     inner: RefCell<T>
 }

@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{fs, process::Command};
+use std::{fs, process::{Command, ExitCode, ExitStatus}};
 use toml;
 use serde::Deserialize;
 

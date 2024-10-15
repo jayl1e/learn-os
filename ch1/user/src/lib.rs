@@ -1,6 +1,8 @@
 #![no_std]
 #![feature(linkage)]
 
+use syscall::sys_yield;
+
 mod syscall;
 pub mod console;
 mod lang_items;
@@ -39,3 +41,5 @@ pub fn get_task_info(name_buf: &mut [u8]) -> Option<&str> {
     let name = core::str::from_utf8(&name_buf[..(l as usize)]).unwrap();
     Some(name)
 }
+
+pub fn yield_()->isize{sys_yield()}

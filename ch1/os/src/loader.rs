@@ -2,13 +2,15 @@ use core::{arch::asm, mem, ffi};
 
 use lazy_static::lazy_static;
 
-use crate::{println, sbi::shut_down, sync::up::UPSafeCell, trap::context::TrapContext};
+use crate::{println, sync::up::UPSafeCell, trap::context::TrapContext};
 
-const MAX_APP_NUM:usize=16;
-const APP_BASE_ADDRESS:usize = 0x80400000;
-const APP_SIZE_LIMIT:usize = 0x20000;
+pub const MAX_APP_NUM:usize=16;
+//const APP_BASE_ADDRESS:usize = 0x80400000;
+//const APP_SIZE_LIMIT:usize = 0x20000;
 const KERNEL_STACK_LIMIT:usize = 8192;
 const USER_STACK_LIMIT:usize = 8192;
+
+#[derive(Clone, Copy)]
 #[repr(align(4096))]
 struct KernelStack{
     data: [u8;KERNEL_STACK_LIMIT]
@@ -27,6 +29,7 @@ impl KernelStack {
     }
 }
 
+#[derive(Clone, Copy)]
 #[repr(align(4096))]
 struct UserStack{
     data: [u8;USER_STACK_LIMIT]
@@ -38,40 +41,40 @@ impl UserStack {
     }
 }
 
-static KERNEL_STACK:KernelStack = KernelStack{data:[0;KERNEL_STACK_LIMIT]};
-static USER_STACK:UserStack = UserStack{data:[0;USER_STACK_LIMIT]};
+static KERNEL_STACK:[KernelStack;MAX_APP_NUM] = [KernelStack{data:[0;KERNEL_STACK_LIMIT]};MAX_APP_NUM];
+static USER_STACK:[UserStack;MAX_APP_NUM] = [UserStack{data:[0;USER_STACK_LIMIT]};MAX_APP_NUM];
 
 #[derive(Debug, Clone, Copy)]
 struct AppInfoBuf{
     name: usize,
     start: usize,
     end: usize,
+    mem_start: usize,
+    mem_end: usize
 }
 
 pub struct AppInfo{
     pub name: &'static str,
-    mem: &'static [u8]
+    mem: &'static [u8],
+    dst: &'static mut [u8]
 }
 
 #[repr(C)]
 struct AppManager{
     num_app: usize,
-    current_app: usize,
     app_infos: [AppInfoBuf;MAX_APP_NUM],
 }
 
 impl AppManager {
-    pub fn get_current_app(&self)->usize{
-        self.current_app
-    }
     pub fn print_apps_info(&self){
         println!("sizeof AppInfoBuf is {}", size_of::<AppInfoBuf>());
         println!("[kernel] num_app = {}", self.num_app);
-        for i in 1..=self.num_app{
+        for i in 0..self.num_app{
             self.print_app_info(i);
         }
         println!("[kernel] apps are above");
     }
+
     fn print_app_info(&self, i:usize){
         let app = unsafe {self.get_app_info(i)};
         println!(
@@ -82,31 +85,24 @@ impl AppManager {
             app.name
         )
     }
-    pub fn move_to_next_app(&mut self)->bool{
-        if self.current_app>=self.num_app{
-            false
-        }else{
-            self.current_app+=1;
-            true
-        }
-    }
 
     unsafe fn get_app_info(&self, app_id:usize)->AppInfo{
-        let ref a = self.app_infos[app_id-1];
+        let ref a = self.app_infos[app_id];
         let app_src =
             core::slice::from_raw_parts(a.start as *const u8, a.end- a.start);
+        let app_dst =
+            core::slice::from_raw_parts_mut(a.mem_start as *mut u8, a.mem_end- a.mem_start);
+        
         let app_name = ffi::CStr::from_ptr(a.name as *const i8).to_str().unwrap();
-        AppInfo { name: app_name, mem: app_src}
+        AppInfo { name: app_name, mem: app_src, dst:app_dst}
     }
 
-    pub unsafe fn load_app(&self, app_id:usize){
-        if app_id>self.num_app{
-            panic!("bad app id to load");
-        }
+    pub unsafe fn load_app(&self, app_id:usize, app_info: AppInfo){
         println!("[kernel] loading app_{}", app_id);
-        let app_dst = core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT);
+        println!("loading {:?} to {:?}",app_info.mem.as_ptr_range(), app_info.dst.as_ptr_range());
+        let app_dst = app_info.dst;
         app_dst.fill(0);
-        let app_src = self.get_app_info(app_id).mem;
+        let app_src = app_info.mem;
         app_dst[..app_src.len()].copy_from_slice(app_src);
         asm!("fence.i");
     }
@@ -119,12 +115,11 @@ lazy_static!{
         }
         let num_app_ptr = _num_app as *const usize;
         let num_app = num_app_ptr.read_volatile();
-        let mut app_infos = [AppInfoBuf{name:0, start:0, end:0};MAX_APP_NUM];
+        let mut app_infos = [AppInfoBuf{name:0, start:0, end:0, mem_start:0, mem_end:0};MAX_APP_NUM];
         let app_info_raw = core::slice::from_raw_parts(num_app_ptr.add(1) as *const AppInfoBuf, num_app);
         app_infos[..num_app].copy_from_slice(app_info_raw);
         UPSafeCell::new(AppManager{
             num_app,
-            current_app:0,
             app_infos
         })
     };
@@ -138,34 +133,35 @@ pub fn init(){
 pub fn print_apps_info(){
     APP_MANAGER.exclusive_access().print_apps_info();
 }
-    
-pub fn run_next_app()->!{
-    let mut m = APP_MANAGER.exclusive_access();
-    if !m.move_to_next_app(){
-        println!("[kernel] finished all app, shutting down");
-        shut_down(false)
-    }
-    extern "C"{fn __restore(ctx_ptr: usize)->!;}
-    unsafe {
-        m.load_app(m.get_current_app());
-    }
-    //function never return, the destructor wont work, drop it manually
-    drop(m);
-    
-    unsafe {
-        __restore(
-            KERNEL_STACK.push_trap_context(
-                TrapContext::init_new_app(USER_STACK.get_sp())
-            )
-        )
+
+pub unsafe fn load_all_apps(){
+    let m = APP_MANAGER.exclusive_access();
+    for i in 0..m.num_app{
+        let app_info = m.get_app_info(i);
+        m.load_app(i, app_info);
     }
 }
 
-pub fn get_current_app()->AppInfo{
+
+pub fn get_app_info(app_id:usize)->AppInfo{
     let m = APP_MANAGER.exclusive_access();
     unsafe {
-        m.get_app_info(m.get_current_app())
+        m.get_app_info(app_id)
     }
 }
-    
+
+pub fn get_num_app()->usize{
+    let m = APP_MANAGER.exclusive_access();
+    m.num_app
+}
+
+pub fn init_app_cx(app_id:usize)->usize{
+    let entry = get_app_info(app_id).dst.as_ptr() as usize;
+    let sp = USER_STACK[app_id].get_sp();
+    let ctx = TrapContext::init_new_app(sp, entry);
+    let ksp = KERNEL_STACK[app_id].push_trap_context(ctx);
+    //todo debug
+    println!("entry: {:X}, sp: {:X}, trap_ctx_in_ksp: {:X}", entry, sp, ksp);
+    ksp
+}
 

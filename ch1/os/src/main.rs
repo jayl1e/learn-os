@@ -6,9 +6,10 @@ mod console;
 mod lang_items;
 mod logging;
 mod sync;
-mod batch;
+mod loader;
 mod syscall;
 mod trap;
+mod task;
 
 
 
@@ -23,26 +24,24 @@ fn rust_main()->!{
     clear_bss();
     
     logging::init();
-    batch::init();
+    loader::init();
     trap::init();
-    println!("[kernel] hello world");
-    batch::run_next_app();
-    trace!("trace log");
-    debug!("debug log");
-    info!("info log");
-    warn!("warning log");
-    error!("error log");
+    println!("[kernel] hello");
+    trace!("start loading");
+    unsafe {loader::load_all_apps();}
+    trace!("start running");
+    task::run_first_task();
     sbi::shut_down(false);
     panic!("should not run here");
 }
 
 fn clear_bss(){
     extern "C"{
-        fn sbss();
-        fn ebss();
+        static sbss:usize;
+        static ebss:usize;
     }
     unsafe {
-        slice::from_raw_parts_mut(sbss as *mut u8, ebss as usize - sbss as usize).fill(0);
+        slice::from_raw_parts_mut(sbss as *mut u8, ebss - sbss).fill(0);
     }
 }
 

@@ -1,7 +1,6 @@
-# generated from linker_src.ld
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
-BASE_ADDRESS = 0x80460000;
+BASE_ADDRESS = 0x80400000;
 
 SECTIONS
 {

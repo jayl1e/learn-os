@@ -18,3 +18,7 @@ path = "src/main.rs"
 test = false
 doctest = false
 bench = false
+
+[build-dependencies]
+serde = {version="1.0.210",features=["derive"]}
+toml = "0.8.19"
