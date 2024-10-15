@@ -171,10 +171,5 @@ pub fn init_app_cx(app_id: usize) -> usize {
     let sp = USER_STACK[app_id].get_sp();
     let ctx = TrapContext::init_new_app(sp, entry);
     let ksp = KERNEL_STACK[app_id].push_trap_context(ctx);
-    //todo debug
-    println!(
-        "entry: {:X}, sp: {:X}, trap_ctx_in_ksp: {:X}",
-        entry, sp, ksp
-    );
     ksp
 }
