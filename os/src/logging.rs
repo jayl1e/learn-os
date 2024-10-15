@@ -7,7 +7,7 @@ impl log::Log for SimpleLogger {
         true
     }
     fn log(&self, record: &log::Record) {
-        if !self.enabled(record.metadata()){
+        if !self.enabled(record.metadata()) {
             return;
         }
         use log::Level;
@@ -25,13 +25,11 @@ impl log::Log for SimpleLogger {
             record.args(),
         );
     }
-    fn flush(&self) {
-        
-    }
+    fn flush(&self) {}
 }
 
-pub fn init(){
-    static LOGGER: SimpleLogger=SimpleLogger;
+pub fn init() {
+    static LOGGER: SimpleLogger = SimpleLogger;
     log::set_logger(&LOGGER).unwrap();
     use log::LevelFilter;
     log::set_max_level(match option_env!("LOG") {

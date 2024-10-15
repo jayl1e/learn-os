@@ -1,43 +1,57 @@
 pub mod context;
 
-use core::arch::global_asm;
-use riscv::register::{scause::{self, Exception, Trap}, stval, stvec};
+use crate::{println, syscall::syscall, task::exit_current_task};
 use context::TrapContext;
-use crate::{println,syscall::syscall, task::exit_current_task};
+use core::arch::global_asm;
+use riscv::register::{
+    scause::{self, Exception, Trap},
+    stval, stvec,
+};
 
 global_asm!(include_str!("trap.asm"));
 
-pub fn init(){
-    extern "C" {fn __alltraps();}
+pub fn init() {
+    extern "C" {
+        fn __alltraps();
+    }
     unsafe {
         stvec::write(__alltraps as usize, stvec::TrapMode::Direct);
     }
 }
 
 #[no_mangle]
-pub fn trap_handler(cx: &mut TrapContext)->&mut TrapContext{
+pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
-        Trap::Exception(Exception::UserEnvCall)=>{
+        Trap::Exception(Exception::UserEnvCall) => {
             cx.sepc += 4;
-            let rt = syscall(cx.registers[17],cx.registers[10],cx.registers[11], cx.registers[12]);
+            let rt = syscall(
+                cx.registers[17],
+                cx.registers[10],
+                cx.registers[11],
+                cx.registers[12],
+            );
             match rt {
-                Some(rt)=>{
+                Some(rt) => {
                     cx.registers[10] = rt as usize;
                 }
-                None=>{
+                None => {
                     println!("[kernel] bad syscall, killing process");
                     exit_current_task();
                 }
             }
-        },
-        Trap::Exception(_)=>{
+        }
+        Trap::Exception(_) => {
             println!("[kernel] process exception, killing process");
             exit_current_task();
-        },
-        Trap::Interrupt(_)=>{
-            panic!("unsupported interrupt: scause {:?}, stval {}", scause.cause(), stval)
+        }
+        Trap::Interrupt(_) => {
+            panic!(
+                "unsupported interrupt: scause {:?}, stval {}",
+                scause.cause(),
+                stval
+            )
         }
     }
     cx

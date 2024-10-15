@@ -5,14 +5,14 @@ use super::sbi;
 struct Stdout;
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for c in s.chars(){
-                sbi::console_put_char(c as usize);
+        for c in s.chars() {
+            sbi::console_put_char(c as usize);
         }
         Ok(())
     }
 }
 
-pub fn print(args: fmt::Arguments){
+pub fn print(args: fmt::Arguments) {
     Stdout.write_fmt(args).unwrap();
 }
 
