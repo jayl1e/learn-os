@@ -1,7 +1,7 @@
 #![no_std]
 #![feature(linkage)]
 
-use syscall::sys_yield;
+use syscall::{sys_get_time, sys_yield};
 
 mod syscall;
 pub mod console;
@@ -43,3 +43,7 @@ pub fn get_task_info(name_buf: &mut [u8]) -> Option<&str> {
 }
 
 pub fn yield_()->isize{sys_yield()}
+
+pub fn get_time()->isize{
+    sys_get_time()
+}

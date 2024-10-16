@@ -82,11 +82,11 @@ impl AppManager {
     fn print_app_info(&self, i: usize) {
         let app = unsafe { self.get_app_info(i) };
         println!(
-            "[kernel] app_{} [{:p}, {:p}], named: {}",
+            "[kernel] app_{} named: {} from {:?} to {:?}",
             i,
-            app.mem.as_ptr_range().start,
-            app.mem.as_ptr_range().end,
-            app.name
+            app.name,
+            app.mem.as_ptr_range(),
+            app.dst.as_ptr_range()
         )
     }
 
@@ -106,11 +106,6 @@ impl AppManager {
 
     pub unsafe fn load_app(&self, app_id: usize, app_info: AppInfo) {
         println!("[kernel] loading app_{}", app_id);
-        println!(
-            "loading {:?} to {:?}",
-            app_info.mem.as_ptr_range(),
-            app_info.dst.as_ptr_range()
-        );
         let app_dst = app_info.dst;
         app_dst.fill(0);
         let app_src = app_info.mem;

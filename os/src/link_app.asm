@@ -3,7 +3,7 @@
     .section .data
     .global _num_app
 _num_app:
-    .quad 4
+    .quad 5
 
     .quad app_1_name
     .quad app_1_start
@@ -33,6 +33,13 @@ _num_app:
     .quad 0x80480000
     
 
+    .quad app_5_name
+    .quad app_5_start
+    .quad app_5_end
+    .quad 0x80480000
+    .quad 0x804a0000
+    
+
     .global app_1_name
     .global app_1_start
     .global app_1_end
@@ -55,16 +62,25 @@ app_2_end:
     .global app_3_start
     .global app_3_end
 app_3_name:
-    .asciz "03priv_inst"
+    .asciz "02sleep"
 app_3_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/03priv_inst.bin"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/02sleep.bin"
 app_3_end:
 
     .global app_4_name
     .global app_4_start
     .global app_4_end
 app_4_name:
-    .asciz "04csr"
+    .asciz "03priv_inst"
 app_4_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04csr.bin"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/03priv_inst.bin"
 app_4_end:
+
+    .global app_5_name
+    .global app_5_start
+    .global app_5_end
+app_5_name:
+    .asciz "04csr"
+app_5_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/04csr.bin"
+app_5_end:

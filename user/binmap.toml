@@ -11,14 +11,20 @@ end="0x80440000"
 file="target/riscv64gc-unknown-none-elf/release/01print_stack.bin"
 
 [[bin]]
-name="03priv_inst"
+name="02sleep"
 start="0x80440000"
 end="0x80460000"
+file="target/riscv64gc-unknown-none-elf/release/02sleep.bin"
+
+[[bin]]
+name="03priv_inst"
+start="0x80460000"
+end="0x80480000"
 file="target/riscv64gc-unknown-none-elf/release/03priv_inst.bin"
 
 [[bin]]
 name="04csr"
-start="0x80460000"
-end="0x80480000"
+start="0x80480000"
+end="0x804a0000"
 file="target/riscv64gc-unknown-none-elf/release/04csr.bin"
 

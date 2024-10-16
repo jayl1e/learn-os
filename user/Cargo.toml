@@ -38,3 +38,10 @@ path = "src/bin/01print_stack.rs"
 test = false
 doctest = false
 bench = false
+
+[[bin]]
+name = "02sleep"
+path = "src/bin/02sleep.rs"
+test = false
+doctest = false
+bench = false

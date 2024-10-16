@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use log::debug;
 
 use crate::loader::{get_app_info, get_num_app, init_app_cx, AppInfo, MAX_APP_NUM};
 use crate::println;
@@ -64,7 +65,7 @@ impl TaskManager {
 
     fn run_next_task(&self) {
         if let Some(next) = self.find_next_task() {
-            println!("[kernel] scheduling app {}", next);
+            debug!("[kernel] scheduling app {}", next);
             let mut m = self.inner.exclusive_access();
             let current = m.current;
             m.current = next;
@@ -102,7 +103,7 @@ impl TaskManager {
         let next = nxt as *const TaskContext;
         drop(m);
 
-        println!("[kernel] scheduling app {}", current);
+        debug!("[kernel] scheduling app {}", current);
         let mut unused_buf: TaskContext = TaskContext::zero_init();
         let unused = &mut unused_buf as *mut TaskContext;
         unsafe {

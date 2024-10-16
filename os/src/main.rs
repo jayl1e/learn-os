@@ -7,9 +7,11 @@ mod loader;
 mod logging;
 mod sbi;
 mod sync;
-mod syscall;
+mod timer;
 mod task;
+mod syscall;
 mod trap;
+
 
 use core::{arch::global_asm, slice};
 use log::*;
@@ -24,11 +26,13 @@ fn rust_main() -> ! {
     logging::init();
     loader::init();
     trap::init();
-    println!("[kernel] hello");
+    println!("[kernel] hello going to run apps");
     trace!("start loading");
     unsafe {
         loader::load_all_apps();
     }
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
     trace!("start running");
     task::run_first_task();
     sbi::shut_down(false);
