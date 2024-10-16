@@ -1,9 +1,9 @@
 PROFILE ?= release
 build:
 ifeq ($(PROFILE), debug)
-	cargo build
+	LOG=DEBUG cargo build
 else
-	cargo build --$(PROFILE)
+	LOG=INFO cargo build --$(PROFILE)
 endif
 	rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/$(PROFILE)/os -O binary target/riscv64gc-unknown-none-elf/$(PROFILE)/os.bin
 

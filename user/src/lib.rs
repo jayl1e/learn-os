@@ -17,11 +17,16 @@ pub extern "C" fn _start()->!{
 
 fn clear_bss(){
     extern "C"{
+        // use fn because we want to access there as pointer
+        // simple usize will read data there
         fn sbss();
         fn ebss();
     }
     unsafe {
-        core::slice::from_raw_parts_mut(sbss as *mut u8,ebss as usize - sbss as usize ).fill(0);
+        core::slice::from_raw_parts_mut(
+            sbss as *mut u8,
+            ebss as usize - sbss as usize )
+            .fill(0);
     }
 }
 

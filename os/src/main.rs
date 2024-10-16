@@ -22,7 +22,6 @@ global_asm!(include_str!("link_app.asm"));
 #[allow(unreachable_code)]
 fn rust_main() -> ! {
     clear_bss();
-
     logging::init();
     loader::init();
     trap::init();
@@ -41,10 +40,14 @@ fn rust_main() -> ! {
 
 fn clear_bss() {
     extern "C" {
-        static sbss: usize;
-        static ebss: usize;
+        // use fn because we want to access there as pointer
+        // simple usize will read data there
+        fn sbss();
+        fn ebss();
     }
     unsafe {
-        slice::from_raw_parts_mut(sbss as *mut u8, ebss - sbss).fill(0);
+        slice::from_raw_parts_mut(
+            sbss as usize as *mut u8, 
+            ebss as usize- sbss as usize).fill(0);
     }
 }
