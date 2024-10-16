@@ -15,6 +15,6 @@ pub fn shut_down(failure: bool) -> ! {
     unreachable!()
 }
 
-pub fn set_timer(time: usize){
+pub fn set_timer(time: usize) {
     sbi_rt::set_timer(time as u64);
 }

@@ -21,7 +21,7 @@ pub fn syscall(syscall_id: usize, a1: usize, a2: usize, a3: usize) -> Option<isi
             Some(process::sys_get_task_info(s))
         }
         SYSCALL_YIELD => Some(process::sys_yield()),
-        SYSCALL_GET_TIME=>Some(process::sys_get_time()),
+        SYSCALL_GET_TIME => Some(process::sys_get_time()),
         _ => None,
     }
 }

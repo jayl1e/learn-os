@@ -1,12 +1,17 @@
 pub mod context;
 
-use crate::{println, syscall::syscall, task::{exit_current_task, suspend_current_task}, timer};
+use crate::{
+    println,
+    syscall::syscall,
+    task::{exit_current_task, suspend_current_task},
+    timer,
+};
 use context::TrapContext;
-use log::debug;
 use core::arch::global_asm;
+use log::debug;
 use riscv::register::{
     scause::{self, Exception, Interrupt, Trap},
-    stval, stvec, sie,
+    sie, stval, stvec,
 };
 
 global_asm!(include_str!("trap.asm"));
@@ -47,7 +52,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             println!("[kernel] process exception, killing process");
             exit_current_task();
         }
-        Trap::Interrupt(Interrupt::SupervisorTimer)=>{
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
             timer::set_next_trigger();
             debug!("[kernel] clock interrupted");
             suspend_current_task();
@@ -63,7 +68,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     cx
 }
 
-pub fn enable_timer_interrupt(){
+pub fn enable_timer_interrupt() {
     unsafe {
         sie::set_stimer();
     }

@@ -1,5 +1,5 @@
-use crate::{println, timer};
 use crate::task::{exit_current_task, get_current_app, suspend_current_task};
+use crate::{println, timer};
 
 #[allow(unreachable_code)]
 pub fn sys_exit(code: i32) -> ! {
@@ -22,6 +22,6 @@ pub fn sys_yield() -> isize {
     0
 }
 
-pub fn sys_get_time()->isize{
+pub fn sys_get_time() -> isize {
     timer::get_time_us() as isize
 }
