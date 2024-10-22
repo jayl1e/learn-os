@@ -1,7 +1,11 @@
 pub mod context;
 
 use crate::{
-    mm::{TRAMPOLINE, TRAP_CONTEXT}, println, syscall::syscall, task::{exit_current_task, get_current_token, get_current_trap_cx, suspend_current_task}, timer
+    mm::{TRAMPOLINE, TRAP_CONTEXT},
+    println,
+    syscall::syscall,
+    task::{exit_current_task, get_current_token, get_current_trap_cx, suspend_current_task},
+    timer,
 };
 use context::TrapContext;
 use core::arch::{asm, global_asm};
@@ -22,14 +26,14 @@ pub fn init() {
     }
 }
 
-fn set_trap_from_kernel(){
+fn set_trap_from_kernel() {
     unsafe {
         stvec::write(trap_from_kernel as usize, stvec::TrapMode::Direct);
     }
 }
 
 #[no_mangle]
-fn trap_from_kernel() -> !{
+fn trap_from_kernel() -> ! {
     panic!("no trap from kernel")
 }
 
@@ -78,7 +82,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> ! {
     trap_return()
 }
 
-fn set_trap_from_user(){
+fn set_trap_from_user() {
     unsafe {
         stvec::write(TRAMPOLINE as usize, stvec::TrapMode::Direct);
     }
@@ -86,11 +90,11 @@ fn set_trap_from_user(){
 
 #[allow(unreachable_code)]
 #[no_mangle]
-pub fn trap_return()->!{
+pub fn trap_return() -> ! {
     set_trap_from_user();
     let trap_ctx_ptr = TRAP_CONTEXT;
     let user_satp = get_current_token();
-    extern "C"{
+    extern "C" {
         fn __alltraps();
         fn __restore();
     }
@@ -113,4 +117,3 @@ pub fn enable_timer_interrupt() {
         sie::set_stimer();
     }
 }
-

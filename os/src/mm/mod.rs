@@ -1,9 +1,9 @@
 use log::debug;
-mod heap_allocator;
 mod address;
-mod page_table;
 mod frame_allocator;
+mod heap_allocator;
 mod memory_set;
+mod page_table;
 
 pub fn init() {
     heap_allocator::init_heap();
@@ -13,7 +13,9 @@ pub fn init() {
 }
 
 pub use address::{PhysPageNum, VirtAddress};
-pub use memory_set::{MemorySet, TRAMPOLINE, TRAP_CONTEXT, kernel_stack_position, KERNEL_SPACE, MapPermission};
+pub use memory_set::{
+    kernel_stack_position, MapPermission, MemorySet, KERNEL_SPACE, TRAMPOLINE, TRAP_CONTEXT,
+};
 pub use page_table::translate_byte_buffer;
 
 #[allow(unused_imports)]

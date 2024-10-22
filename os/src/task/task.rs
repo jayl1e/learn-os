@@ -3,7 +3,10 @@ use lazy_static::lazy_static;
 use log::debug;
 
 use crate::loader::{get_app_info, get_num_app, AppInfo};
-use crate::mm::{kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT};
+use crate::mm::{
+    kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE,
+    TRAP_CONTEXT,
+};
 use crate::println;
 use crate::sbi::shut_down;
 use crate::sync::up::UPSafeCell;
@@ -33,25 +36,39 @@ struct TaskControlBlock {
 }
 
 impl TaskControlBlock {
-    pub fn new(data: &[u8], app_id:usize)->Self{
-        let (mem_set,usp, entry) = MemorySet::new_app_from_elf(data);
-        let trap_ctx_ppn = mem_set.page_table.translate(VirtAddress::from(TRAP_CONTEXT).into()).unwrap().ppn();
+    pub fn new(data: &[u8], app_id: usize) -> Self {
+        let (mem_set, usp, entry) = MemorySet::new_app_from_elf(data);
+        let trap_ctx_ppn = mem_set
+            .page_table
+            .translate(VirtAddress::from(TRAP_CONTEXT).into())
+            .unwrap()
+            .ppn();
         let status = TaskStatus::READY;
         let (kernel_stack_bottom, kernel_stack_top) = kernel_stack_position(app_id);
-        KERNEL_SPACE.exclusive_access().insert_frame(kernel_stack_bottom.into(), kernel_stack_top.into(), MapPermission::R|MapPermission::W);
-        let block = Self{
+        KERNEL_SPACE.exclusive_access().insert_frame(
+            kernel_stack_bottom.into(),
+            kernel_stack_top.into(),
+            MapPermission::R | MapPermission::W,
+        );
+        let block = Self {
             status,
-            cx:TaskContext::goto_trap_return(kernel_stack_top),
+            cx: TaskContext::goto_trap_return(kernel_stack_top),
             mem_set,
             trap_ctx_ppn,
             base_size: usp,
         };
         let trap_ctx = block.get_trap_ctx();
-        *trap_ctx = TrapContext::init_new_app(usp, entry, KERNEL_SPACE.exclusive_access().page_table.token(), kernel_stack_top, trap_handler as usize);
+        *trap_ctx = TrapContext::init_new_app(
+            usp,
+            entry,
+            KERNEL_SPACE.exclusive_access().page_table.token(),
+            kernel_stack_top,
+            trap_handler as usize,
+        );
         block
     }
 
-    fn get_trap_ctx(&self)->&'static mut TrapContext{
+    fn get_trap_ctx(&self) -> &'static mut TrapContext {
         self.trap_ctx_ppn.get_mut()
     }
 }
@@ -69,11 +86,9 @@ struct TaskManagerInner {
 lazy_static! {
     static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
-        let mut tasks : Vec<TaskControlBlock> = Vec::new();
+        let mut tasks: Vec<TaskControlBlock> = Vec::new();
         for i in 0..num_app {
-            tasks.push(
-                TaskControlBlock::new(get_app_info(i).mem, i)
-            );
+            tasks.push(TaskControlBlock::new(get_app_info(i).mem, i));
         }
         TaskManager {
             num_app,
@@ -143,12 +158,12 @@ impl TaskManager {
         panic!("should shutdown after all apps exited")
     }
 
-    fn get_current_token(&self)->usize{
+    fn get_current_token(&self) -> usize {
         let m = self.inner.exclusive_access();
         m.tasks.get(m.current).unwrap().mem_set.page_table.token()
     }
 
-    fn get_current_trap_cx(&self)->&mut TrapContext{
+    fn get_current_trap_cx(&self) -> &mut TrapContext {
         let m = self.inner.exclusive_access();
         m.tasks.get(m.current).unwrap().get_trap_ctx()
     }
@@ -188,10 +203,10 @@ pub fn run_first_task() {
     panic!("should not return")
 }
 
-pub fn get_current_token()->usize{
+pub fn get_current_token() -> usize {
     TASK_MANAGER.get_current_token()
 }
 
-pub fn get_current_trap_cx()->&'static mut TrapContext{
+pub fn get_current_trap_cx() -> &'static mut TrapContext {
     TASK_MANAGER.get_current_trap_cx()
 }

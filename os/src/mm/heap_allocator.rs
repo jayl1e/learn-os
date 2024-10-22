@@ -25,8 +25,8 @@ fn handle_alloc_error(layout: core::alloc::Layout) -> ! {
 
 #[allow(unused, static_mut_refs)]
 pub fn test_heap() {
-    use alloc::vec;
     use alloc::boxed::Box;
+    use alloc::vec;
     extern "C" {
         fn sbss();
         fn ebss();
