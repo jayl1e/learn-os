@@ -1,4 +1,4 @@
-use core::{slice, str};
+use core::str;
 
 use crate::{mm::translate_byte_buffer, print, task::get_current_token};
 

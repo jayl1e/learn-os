@@ -51,7 +51,7 @@ _num_app:
         apps.len()
     )?;
 
-    for (idx, app) in apps.iter().enumerate() {
+    for (idx,_) in apps.iter().enumerate() {
         let i = idx + 1;
         writeln!(
             rt,

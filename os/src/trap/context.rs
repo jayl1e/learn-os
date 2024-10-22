@@ -1,6 +1,7 @@
 use riscv::register::sstatus::{self, Sstatus, SPP};
 
 //const  BASE_ADDRESS:usize = 0x80400000;
+#[allow(unused)]
 pub struct TrapContext {
     pub registers: [usize; 32],
     pub sstatus: Sstatus,

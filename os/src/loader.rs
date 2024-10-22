@@ -1,52 +1,10 @@
-use core::{arch::asm, ffi, mem};
+use core::ffi;
 
 use lazy_static::lazy_static;
 
-use crate::config::USER_STACK_LIMIT;
-use crate::{println, sync::up::UPSafeCell, trap::context::TrapContext};
+use crate::{println, sync::up::UPSafeCell};
 
 pub const MAX_APP_NUM: usize = 16;
-//const APP_BASE_ADDRESS:usize = 0x80400000;
-//const APP_SIZE_LIMIT:usize = 0x20000;
-const KERNEL_STACK_LIMIT: usize = 8192;
-
-#[derive(Clone, Copy)]
-#[repr(align(4096))]
-struct KernelStack {
-    data: [u8; KERNEL_STACK_LIMIT],
-}
-impl KernelStack {
-    fn get_sp(&self) -> usize {
-        self.data.as_ptr() as usize + KERNEL_STACK_LIMIT
-    }
-    fn push_trap_context(&self, cx: TrapContext) -> usize {
-        let buf_addr = self.get_sp() - mem::size_of::<TrapContext>();
-        let buf_ptr = buf_addr as *mut TrapContext;
-        unsafe {
-            *buf_ptr = cx;
-        }
-        buf_addr
-    }
-}
-
-#[derive(Clone, Copy)]
-#[repr(align(4096))]
-struct UserStack {
-    data: [u8; USER_STACK_LIMIT],
-}
-
-impl UserStack {
-    fn get_sp(&self) -> usize {
-        self.data.as_ptr() as usize + KERNEL_STACK_LIMIT
-    }
-}
-
-static KERNEL_STACK: [KernelStack; MAX_APP_NUM] = [KernelStack {
-    data: [0; KERNEL_STACK_LIMIT],
-}; MAX_APP_NUM];
-static USER_STACK: [UserStack; MAX_APP_NUM] = [UserStack {
-    data: [0; USER_STACK_LIMIT],
-}; MAX_APP_NUM];
 
 #[derive(Debug, Clone, Copy)]
 struct AppInfoBuf {

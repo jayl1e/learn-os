@@ -15,6 +15,7 @@ use super::switch::__switch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TaskStatus {
+    #[allow(unused)]
     UnInit,
     READY,
     RUNNING,
@@ -26,6 +27,8 @@ struct TaskControlBlock {
     cx: TaskContext,
     mem_set: MemorySet,
     trap_ctx_ppn: PhysPageNum,
+    // base_size to allow brk
+    #[allow(unused)]
     base_size: usize,
 }
 

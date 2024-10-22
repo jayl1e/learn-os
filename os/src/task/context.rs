@@ -18,17 +18,6 @@ impl TaskContext {
         }
     }
 
-    pub fn goto_restore(sp: usize) -> Self {
-        extern "C" {
-            fn __restore();
-        }
-        Self {
-            ra: __restore as usize,
-            sp: sp,
-            s: [0; KEEP_REGISTER],
-        }
-    }
-
     pub fn goto_trap_return(sp: usize) -> Self{
         Self{
             ra: trap_return as usize,
