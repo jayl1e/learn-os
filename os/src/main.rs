@@ -4,6 +4,7 @@
 
 extern crate alloc;
 
+mod config;
 mod console;
 mod lang_items;
 mod logging;
@@ -27,20 +28,19 @@ global_asm!(include_str!("link_app.asm"));
 fn rust_main() -> ! {
     clear_bss();
     logging::init();
+    debug!("[kernel] init mm");
     mm::init();
+    debug!("[kernel] init loader");
     loader::init();
+    debug!("[kernel] init trap");
     trap::init();
-    /*
-    for test
-    mm::heap_allocator::test_heap();
-    sbi::shut_down(false);
-    */
+    // for test
+    // mm::heap_allocator::test_heap();
+    //mm::test_frame_alloc();
+    //sbi::shut_down(false);
 
     println!("[kernel] hello going to run apps");
     trace!("start loading");
-    unsafe {
-        loader::load_all_apps();
-    }
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     trace!("start running");

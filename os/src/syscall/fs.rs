@@ -1,14 +1,17 @@
 use core::{slice, str};
 
-use crate::print;
+use crate::{mm::translate_byte_buffer, print, task::get_current_token};
 
 const STDOUT: usize = 1;
 pub fn sys_write(fd: usize, address: *const u8, len: usize) -> isize {
     match fd {
         STDOUT => {
-            let slice = unsafe { slice::from_raw_parts(address, len) };
-            let s = str::from_utf8(slice).unwrap();
-            print!("{}", s);
+            let buffers = translate_byte_buffer(get_current_token(), address, len);
+            for buf in buffers{
+                unsafe {
+                    print!("{}", str::from_utf8_unchecked(buf));
+                }
+            }
             len as isize
         }
         _ => -1,

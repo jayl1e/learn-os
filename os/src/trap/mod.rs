@@ -1,13 +1,10 @@
 pub mod context;
 
 use crate::{
-    println,
-    syscall::syscall,
-    task::{exit_current_task, suspend_current_task},
-    timer,
+    mm::{TRAMPOLINE, TRAP_CONTEXT}, println, syscall::syscall, task::{exit_current_task, get_current_token, get_current_trap_cx, suspend_current_task}, timer
 };
 use context::TrapContext;
-use core::arch::global_asm;
+use core::arch::{asm, global_asm};
 use log::debug;
 use riscv::register::{
     scause::{self, Exception, Interrupt, Trap},
@@ -25,8 +22,21 @@ pub fn init() {
     }
 }
 
+fn set_trap_from_kernel(){
+    unsafe {
+        stvec::write(trap_from_kernel as usize, stvec::TrapMode::Direct);
+    }
+}
+
 #[no_mangle]
-pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+fn trap_from_kernel() -> !{
+    panic!("no trap from kernel")
+}
+
+#[no_mangle]
+pub fn trap_handler(cx: &mut TrapContext) -> ! {
+    set_trap_from_kernel();
+    let cx = get_current_trap_cx();
     let scause = scause::read();
     let stval = stval::read();
     match scause.cause() {
@@ -65,7 +75,37 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             )
         }
     }
-    cx
+    trap_return()
+}
+
+fn set_trap_from_user(){
+    unsafe {
+        stvec::write(TRAMPOLINE as usize, stvec::TrapMode::Direct);
+    }
+}
+
+#[allow(unreachable_code)]
+#[no_mangle]
+pub fn trap_return()->!{
+    set_trap_from_user();
+    let trap_ctx_ptr = TRAP_CONTEXT;
+    let user_satp = get_current_token();
+    extern "C"{
+        fn __alltraps();
+        fn __restore();
+    }
+    let restore_va = __restore as usize - __alltraps as usize + TRAMPOLINE;
+    unsafe {
+        asm!(
+            "fence.i",
+            "jr {restore_va}",
+            restore_va = in(reg) restore_va,
+            in("a0") trap_ctx_ptr,
+            in("a1") user_satp,
+            options(noreturn)
+        );
+    }
+    panic!("unreachable after back to user")
 }
 
 pub fn enable_timer_interrupt() {
@@ -73,3 +113,4 @@ pub fn enable_timer_interrupt() {
         sie::set_stimer();
     }
 }
+

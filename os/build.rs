@@ -8,8 +8,6 @@ const LINKER: &str = "src/link_app.asm";
 #[derive(Deserialize)]
 struct Bin {
     name: String,
-    start: String,
-    end: String,
     file: String,
 }
 
@@ -61,10 +59,7 @@ _num_app:
     .quad app_{i}_name
     .quad app_{i}_start
     .quad app_{i}_end
-    .quad {}
-    .quad {}
     "#,
-            app.start, app.end
         )?;
     }
 
@@ -78,6 +73,7 @@ _num_app:
     .global app_{i}_end
 app_{i}_name:
     .asciz "{}"
+    .align 3
 app_{i}_start:
     .incbin "../user/{}"
 app_{i}_end:"#,
@@ -98,14 +94,10 @@ mod test {
             bin: vec![
                 Bin {
                     name: "00name".to_string(),
-                    start: "0x01".to_string(),
-                    end: "0x02".to_string(),
                     file: "target/file.bin".to_string(),
                 },
                 Bin {
                     name: "01name".to_string(),
-                    start: "0x01".to_string(),
-                    end: "0x02".to_string(),
                     file: "target/file.bin".to_string(),
                 },
             ],
