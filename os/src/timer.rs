@@ -11,6 +11,6 @@ pub fn set_next_trigger() {
     crate::sbi::set_timer(get_time() + CLOCK_FREQ / TICK_PER_SECOND);
 }
 
-pub fn get_time_us() -> usize {
+pub fn get_time_ms() -> usize {
     get_time() / (CLOCK_FREQ / MILLI_PER_SEC)
 }

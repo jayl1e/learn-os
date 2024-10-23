@@ -34,5 +34,5 @@ pub fn sys_yield() -> isize {
 }
 
 pub fn sys_get_time() -> isize {
-    timer::get_time_us() as isize
+    timer::get_time_ms() as isize
 }

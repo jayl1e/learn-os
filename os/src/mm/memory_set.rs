@@ -235,7 +235,7 @@ fn new_kernel_map() -> MemorySet {
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
-            MapPermission::X | MapPermission::R,
+            MapPermission::X ,
         ),
         None,
     );
