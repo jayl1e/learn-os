@@ -14,7 +14,7 @@ fn main()->i32{
         Some(name)=>{
             println!("my app name is: {}, I'll run some time", name);
             spend_some_time();
-            println!("{} is going to exit",name)
+            println!("00hello is going to exit")
         }
         None=>{
             println!("get name failed");

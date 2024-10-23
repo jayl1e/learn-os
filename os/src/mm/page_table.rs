@@ -2,11 +2,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::bitflags;
 
-use super::address::PAGE_SIZE;
 use super::{
     address::{PhysPageNum, VirtPageNum},
     frame_allocator::{frame_new, FrameGuard},
-    VirtAddress,
 };
 
 const STAP_PPN_BIT: usize = 44;
@@ -131,7 +129,7 @@ impl PageTable {
         rt
     }
 
-    fn from_token(satp: usize) -> Self {
+    pub fn from_token(satp: usize) -> Self {
         Self {
             root: PhysPageNum(satp & ((1 << STAP_PPN_BIT) - 1)),
             frames: vec![],
@@ -146,24 +144,4 @@ impl PageTable {
         // 8 means sv39
         8usize << 60 | self.root.0
     }
-}
-
-pub fn translate_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static [u8]> {
-    let pt = PageTable::from_token(token);
-    let mut start = ptr as usize;
-    let end = start + len;
-    let end_va = VirtAddress::from(end);
-    let end_ppn = pt.translate(end_va.floor()).unwrap().ppn();
-    let mut v = Vec::new();
-    while start < end {
-        let start_va = VirtAddress::from(start);
-        let ppn = pt.translate(start_va.floor()).unwrap().ppn();
-        if ppn == end_ppn {
-            v.push(&ppn.bytes_mut()[start_va.page_offset()..end_va.page_offset()]);
-        } else {
-            v.push(&ppn.bytes_mut()[start_va.page_offset()..]);
-        }
-        start += PAGE_SIZE;
-    }
-    v
 }

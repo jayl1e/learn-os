@@ -1,5 +1,6 @@
-use crate::task::{exit_current_task, get_current_app, suspend_current_task};
-use crate::{println, timer};
+use crate::mm::Writer;
+use crate::task::{exit_current_task, get_current_app, get_current_token, suspend_current_task};
+use crate::{mm, println, timer};
 
 #[allow(unreachable_code)]
 pub fn sys_exit(code: i32) -> ! {
@@ -8,13 +9,23 @@ pub fn sys_exit(code: i32) -> ! {
     panic!("should not run here")
 }
 
-pub fn sys_get_task_info(name_buf: &mut [u8]) -> isize {
+pub fn sys_get_task_info(ptr: *mut u8, len: usize) -> isize {
+    let mut buf = mm::UserBufMut::new(get_current_token(), ptr, len);
     let name = get_current_app().name;
-    if name_buf.len() < name.len() {
-        return -1;
+    let result = buf.write(name.as_bytes());
+    match result {
+        Err(e)=>{
+            println!("write task info error: {}", e.msg);
+            return -1;
+        },
+        Ok(writen)=>{
+            if writen!=name.len(){
+                return -2;
+            }else{
+                return writen as isize;
+            }
+        }
     }
-    name_buf[..name.len()].copy_from_slice(name.as_bytes());
-    name.len() as isize
 }
 
 pub fn sys_yield() -> isize {
