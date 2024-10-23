@@ -2,9 +2,9 @@ use log::debug;
 mod address;
 mod frame_allocator;
 mod heap_allocator;
+mod io;
 mod memory_set;
 mod page_table;
-mod io;
 
 pub fn init() {
     heap_allocator::init_heap();
@@ -14,10 +14,10 @@ pub fn init() {
 }
 
 pub use address::{PhysPageNum, VirtAddress};
+pub use io::{Reader, UserBuf, UserBufMut, Writer};
 pub use memory_set::{
     kernel_stack_position, MapPermission, MemorySet, KERNEL_SPACE, TRAMPOLINE, TRAP_CONTEXT,
 };
-pub use io::{UserBufMut, UserBuf, Writer, Reader};
 
 #[allow(unused_imports)]
 pub use frame_allocator::test_frame_alloc;

@@ -14,14 +14,14 @@ pub fn sys_get_task_info(ptr: *mut u8, len: usize) -> isize {
     let name = get_current_app().name;
     let result = buf.write(name.as_bytes());
     match result {
-        Err(e)=>{
+        Err(e) => {
             println!("write task info error: {}", e.msg);
             return -1;
-        },
-        Ok(writen)=>{
-            if writen!=name.len(){
+        }
+        Ok(writen) => {
+            if writen != name.len() {
                 return -2;
-            }else{
+            } else {
                 return writen as isize;
             }
         }
