@@ -4,7 +4,7 @@ use riscv::register::sstatus;
 use user_lib::println;
 
 #[no_mangle]
-fn main()->i32{
+fn main() -> i32 {
     println!("set the csr");
     println!("should be killed");
     unsafe {

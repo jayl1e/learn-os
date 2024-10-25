@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 
 struct Stdout;
-const STDOUT:usize =1;
+const STDOUT: usize = 1;
 impl Write for Stdout {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         super::write(STDOUT, s.as_bytes());
@@ -9,7 +9,7 @@ impl Write for Stdout {
     }
 }
 
-pub fn print(args: fmt::Arguments){
+pub fn print(args: fmt::Arguments) {
     Stdout.write_fmt(args).unwrap();
 }
 

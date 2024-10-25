@@ -5,13 +5,11 @@ use core::arch::asm;
 use user_lib::*;
 
 #[no_mangle]
-fn main()->i32{
+fn main() -> i32 {
     println!("exec privileged instruction");
     println!("should be killed");
     unsafe {
-        asm!(
-            "sret"
-        );
+        asm!("sret");
     };
     0
 }
