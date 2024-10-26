@@ -7,8 +7,7 @@ const SYSCALL_GET_TIME: usize = 201;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_EXEC: usize = 221;
-const SYSCALL_GETPID:usize = 172;
-
+const SYSCALL_GETPID: usize = 172;
 
 mod fs;
 mod process;

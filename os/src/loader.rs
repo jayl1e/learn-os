@@ -52,11 +52,11 @@ impl AppManager {
             mem: app_src,
         }
     }
-    pub fn get_app_info_by_name(&self, name: &str) -> Option<AppInfo>{
-        for i in 0..self.num_app{
+    pub fn get_app_info_by_name(&self, name: &str) -> Option<AppInfo> {
+        for i in 0..self.num_app {
             unsafe {
                 let info = self.get_app_info(i);
-                if info.name == name{
+                if info.name == name {
                     return Some(info);
                 }
             }
@@ -80,7 +80,7 @@ lazy_static! {
         let app_info_raw =
             core::slice::from_raw_parts(num_app_ptr.add(1) as *const AppInfoBuf, num_app);
         app_infos[..num_app].copy_from_slice(app_info_raw);
-        UPSafeCell::new(AppManager { num_app, app_infos})
+        UPSafeCell::new(AppManager { num_app, app_infos })
     };
 }
 
@@ -102,7 +102,7 @@ pub fn get_num_app() -> usize {
     m.num_app
 }
 
-pub fn get_app_info_by_name(name: &str)->Option<AppInfo>{
+pub fn get_app_info_by_name(name: &str) -> Option<AppInfo> {
     let m = APP_MANAGER.exclusive_access();
     m.get_app_info_by_name(name)
 }

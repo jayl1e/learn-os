@@ -1,5 +1,7 @@
 use crate::mm::Writer;
-use crate::task::{exit_current_task, get_current_app, get_current_pid, get_current_token, suspend_current_task};
+use crate::task::{
+    exit_current_task, get_current_app, get_current_pid, get_current_token, suspend_current_task,
+};
 use crate::{mm, println, timer};
 
 #[allow(unreachable_code)]
@@ -37,6 +39,6 @@ pub fn sys_get_time() -> isize {
     timer::get_time_ms() as isize
 }
 
-pub fn sys_get_pid()->isize{
+pub fn sys_get_pid() -> isize {
     get_current_pid() as isize
 }

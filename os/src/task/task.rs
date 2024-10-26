@@ -4,8 +4,7 @@ use log::debug;
 
 use crate::loader::{get_app_info, get_num_app, AppInfo};
 use crate::mm::{
-    kernel_stack_position, MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE,
-    TRAP_CONTEXT,
+    kernel_stack_position, MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT,
 };
 use crate::println;
 use crate::sbi::shut_down;
@@ -33,7 +32,7 @@ struct TaskControlBlock {
     inner: Option<TaskControlBlockInner>,
 }
 
-struct TaskControlBlockInner{
+struct TaskControlBlockInner {
     stack: KernelStack,
     mem_set: MemorySet,
     trap_ctx_ppn: PhysPageNum,
@@ -54,8 +53,8 @@ impl TaskControlBlock {
         let pid = PIDHandle::new();
         let kstack = KernelStack::new(&pid);
         let ksp = kstack.get_top();
-        let block_inner = TaskControlBlockInner{
-            stack:kstack,
+        let block_inner = TaskControlBlockInner {
+            stack: kstack,
             mem_set,
             trap_ctx_ppn,
             base_size: usp,
@@ -65,7 +64,7 @@ impl TaskControlBlock {
             pid,
             status,
             cx: TaskContext::goto_trap_return(ksp),
-            inner:Some(block_inner)
+            inner: Some(block_inner),
         };
         *trap_ctx = TrapContext::init_new_app(
             usp,
@@ -76,19 +75,18 @@ impl TaskControlBlock {
         );
         block
     }
-    fn get_task_ctx_mut(&mut self) -> &mut TaskContext{
+    fn get_task_ctx_mut(&mut self) -> &mut TaskContext {
         &mut self.cx
     }
-    fn get_task_ctx(&self) -> &TaskContext{
+    fn get_task_ctx(&self) -> &TaskContext {
         &self.cx
     }
-    fn get_trap_ctx(&self) -> Option<&'static mut TrapContext>{
-        self.inner.as_ref().map(|b|{b.get_trap_ctx()})
+    fn get_trap_ctx(&self) -> Option<&'static mut TrapContext> {
+        self.inner.as_ref().map(|b| b.get_trap_ctx())
     }
-    fn get_mem(&self)->Option<&MemorySet>{
-        self.inner.as_ref().map(|b|{&b.mem_set})
+    fn get_mem(&self) -> Option<&MemorySet> {
+        self.inner.as_ref().map(|b| &b.mem_set)
     }
-
 }
 
 impl TaskControlBlockInner {
@@ -122,7 +120,7 @@ lazy_static! {
 }
 
 impl TaskManager {
-    fn mark_current_task_exited(&self, code:i32) {
+    fn mark_current_task_exited(&self, code: i32) {
         let mut m = self.inner.exclusive_access();
         let current = m.current;
         m.tasks[current].status = TaskStatus::EXITED(code);
@@ -185,7 +183,13 @@ impl TaskManager {
 
     fn get_current_token(&self) -> usize {
         let m = self.inner.exclusive_access();
-        m.tasks.get(m.current).unwrap().get_mem().unwrap().page_table.token()
+        m.tasks
+            .get(m.current)
+            .unwrap()
+            .get_mem()
+            .unwrap()
+            .page_table
+            .token()
     }
 
     fn get_current_trap_cx(&self) -> &mut TrapContext {
@@ -204,7 +208,7 @@ pub fn get_current_app() -> AppInfo {
     get_app_info(cur)
 }
 
-pub fn exit_current_task(code:i32) -> ! {
+pub fn exit_current_task(code: i32) -> ! {
     mark_current_task_exited(code);
     run_next_task();
     panic!("should not run here")
@@ -215,7 +219,7 @@ pub fn suspend_current_task() {
     run_next_task()
 }
 
-fn mark_current_task_exited(code:i32) {
+fn mark_current_task_exited(code: i32) {
     TASK_MANAGER.mark_current_task_exited(code)
 }
 

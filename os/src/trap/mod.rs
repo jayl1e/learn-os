@@ -36,7 +36,7 @@ fn set_trap_from_kernel() {
 fn trap_from_kernel() -> ! {
     panic!("no trap from kernel")
 }
-const ECODE_BAD_PROCESS_HEHAVIOR:i32 = 137;
+const ECODE_BAD_PROCESS_HEHAVIOR: i32 = 137;
 
 #[no_mangle]
 pub fn trap_handler(cx: &mut TrapContext) -> ! {

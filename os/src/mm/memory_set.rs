@@ -136,14 +136,17 @@ impl MemorySet {
         self.push(area, None);
     }
 
-    pub fn remove_frame(&mut self, start: VirtAddress)->Option<()>{
+    pub fn remove_frame(&mut self, start: VirtAddress) -> Option<()> {
         let mut to_remove = None;
-        for (idx, area ) in self.areas.iter().enumerate(){
-            if area.vpns.l == start.floor(){
+        for (idx, area) in self.areas.iter().enumerate() {
+            if area.vpns.l == start.floor() {
                 to_remove.replace(idx);
             }
         }
-        to_remove.map(|idx|{self.areas.swap_remove(idx);()})
+        to_remove.map(|idx| {
+            self.areas.swap_remove(idx);
+            ()
+        })
     }
 
     pub fn activate(&self) {
@@ -245,7 +248,7 @@ fn new_kernel_map() -> MemorySet {
             (stext as usize).into(),
             (etext as usize).into(),
             MapType::Identical,
-            MapPermission::X ,
+            MapPermission::X,
         ),
         None,
     );
