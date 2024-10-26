@@ -3,7 +3,7 @@
     .section .data
     .global _num_app
 _num_app:
-    .quad 5
+    .quad 7
 
     .quad app_1_name
     .quad app_1_start
@@ -28,6 +28,16 @@ _num_app:
     .quad app_5_name
     .quad app_5_start
     .quad app_5_end
+    
+
+    .quad app_6_name
+    .quad app_6_start
+    .quad app_6_end
+    
+
+    .quad app_7_name
+    .quad app_7_start
+    .quad app_7_end
     
 
     .global app_1_name
@@ -79,3 +89,23 @@ app_5_name:
 app_5_start:
     .incbin "../user/target/riscv64gc-unknown-none-elf/release/04csr"
 app_5_end:
+
+    .global app_6_name
+    .global app_6_start
+    .global app_6_end
+app_6_name:
+    .asciz "init"
+    .align 3
+app_6_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/init"
+app_6_end:
+
+    .global app_7_name
+    .global app_7_start
+    .global app_7_end
+app_7_name:
+    .asciz "user_shell"
+    .align 3
+app_7_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/user_shell"
+app_7_end:

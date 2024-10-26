@@ -120,10 +120,14 @@ pub fn read(fd: usize, buf: &mut [u8]) -> isize {
 pub fn get_char() -> Option<u8> {
     let mut buf = [0u8; 1];
     match read(FD_STDIN, &mut buf) {
-        0 => None,
-        1 => Some(buf[0]),
-        other => {
+        0=>None,
+        1=>Some(buf[0]),
+        other =>{
             panic!("read stdin failed")
         }
     }
+}
+
+pub fn get_pid()->isize{
+    syscall::sys_get_pid()
 }

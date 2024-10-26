@@ -36,6 +36,7 @@ fn set_trap_from_kernel() {
 fn trap_from_kernel() -> ! {
     panic!("no trap from kernel")
 }
+const ECODE_BAD_PROCESS_HEHAVIOR:i32 = 137;
 
 #[no_mangle]
 pub fn trap_handler(cx: &mut TrapContext) -> ! {
@@ -58,13 +59,13 @@ pub fn trap_handler(cx: &mut TrapContext) -> ! {
                 }
                 None => {
                     println!("[kernel] bad syscall, killing process");
-                    exit_current_task();
+                    exit_current_task(ECODE_BAD_PROCESS_HEHAVIOR);
                 }
             }
         }
         Trap::Exception(_) => {
             println!("[kernel] process exception, killing process");
-            exit_current_task();
+            exit_current_task(ECODE_BAD_PROCESS_HEHAVIOR);
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             timer::set_next_trigger();

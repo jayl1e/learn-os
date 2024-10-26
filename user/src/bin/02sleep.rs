@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use user_lib::{self, get_time, println, yield_};
+use user_lib::{self, get_time, println, yield_, get_pid};
 
 #[no_mangle]
 fn main() -> i32 {
@@ -15,6 +15,8 @@ fn main() -> i32 {
         now = get_time();
         spend_some_time();
     }
+    let pid = get_pid();
+    println!("I am pid: {}", pid);
     println!("sleep enough, now is {}", now);
     0
 }

@@ -4,7 +4,7 @@ use log::debug;
 
 use crate::loader::{get_app_info, get_num_app, AppInfo};
 use crate::mm::{
-    kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE,
+    kernel_stack_position, MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE,
     TRAP_CONTEXT,
 };
 use crate::println;
@@ -14,6 +14,7 @@ use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
 
 use super::context::TaskContext;
+use super::pid::{KernelStack, PIDHandle};
 use super::switch::__switch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,12 +23,18 @@ enum TaskStatus {
     UnInit,
     READY,
     RUNNING,
-    EXITED,
+    EXITED(i32),
 }
 
 struct TaskControlBlock {
+    pid: PIDHandle,
     status: TaskStatus,
     cx: TaskContext,
+    inner: Option<TaskControlBlockInner>,
+}
+
+struct TaskControlBlockInner{
+    stack: KernelStack,
     mem_set: MemorySet,
     trap_ctx_ppn: PhysPageNum,
     // base_size to allow brk
@@ -36,7 +43,7 @@ struct TaskControlBlock {
 }
 
 impl TaskControlBlock {
-    pub fn new(data: &[u8], app_id: usize) -> Self {
+    pub fn new(data: &[u8]) -> Self {
         let (mem_set, usp, entry) = MemorySet::new_app_from_elf(data);
         let trap_ctx_ppn = mem_set
             .page_table
@@ -44,30 +51,47 @@ impl TaskControlBlock {
             .unwrap()
             .ppn();
         let status = TaskStatus::READY;
-        let (kernel_stack_bottom, kernel_stack_top) = kernel_stack_position(app_id);
-        KERNEL_SPACE.exclusive_access().insert_frame(
-            kernel_stack_bottom.into(),
-            kernel_stack_top.into(),
-            MapPermission::R | MapPermission::W,
-        );
-        let block = Self {
-            status,
-            cx: TaskContext::goto_trap_return(kernel_stack_top),
+        let pid = PIDHandle::new();
+        let kstack = KernelStack::new(&pid);
+        let ksp = kstack.get_top();
+        let block_inner = TaskControlBlockInner{
+            stack:kstack,
             mem_set,
             trap_ctx_ppn,
             base_size: usp,
         };
-        let trap_ctx = block.get_trap_ctx();
+        let trap_ctx = block_inner.get_trap_ctx();
+        let block = Self {
+            pid,
+            status,
+            cx: TaskContext::goto_trap_return(ksp),
+            inner:Some(block_inner)
+        };
         *trap_ctx = TrapContext::init_new_app(
             usp,
             entry,
             KERNEL_SPACE.exclusive_access().page_table.token(),
-            kernel_stack_top,
+            ksp,
             trap_handler as usize,
         );
         block
     }
+    fn get_task_ctx_mut(&mut self) -> &mut TaskContext{
+        &mut self.cx
+    }
+    fn get_task_ctx(&self) -> &TaskContext{
+        &self.cx
+    }
+    fn get_trap_ctx(&self) -> Option<&'static mut TrapContext>{
+        self.inner.as_ref().map(|b|{b.get_trap_ctx()})
+    }
+    fn get_mem(&self)->Option<&MemorySet>{
+        self.inner.as_ref().map(|b|{&b.mem_set})
+    }
 
+}
+
+impl TaskControlBlockInner {
     fn get_trap_ctx(&self) -> &'static mut TrapContext {
         self.trap_ctx_ppn.get_mut()
     }
@@ -88,7 +112,7 @@ lazy_static! {
         let num_app = get_num_app();
         let mut tasks: Vec<TaskControlBlock> = Vec::new();
         for i in 0..num_app {
-            tasks.push(TaskControlBlock::new(get_app_info(i).mem, i));
+            tasks.push(TaskControlBlock::new(get_app_info(i).mem));
         }
         TaskManager {
             num_app,
@@ -98,10 +122,11 @@ lazy_static! {
 }
 
 impl TaskManager {
-    fn mark_current_task_exited(&self) {
+    fn mark_current_task_exited(&self, code:i32) {
         let mut m = self.inner.exclusive_access();
         let current = m.current;
-        m.tasks[current].status = TaskStatus::EXITED;
+        m.tasks[current].status = TaskStatus::EXITED(code);
+        m.tasks[current].inner = None
     }
     fn mark_current_task_suspend(&self) {
         let mut m = self.inner.exclusive_access();
@@ -116,8 +141,8 @@ impl TaskManager {
             let current = m.current;
             m.current = next;
             m.tasks[next].status = TaskStatus::RUNNING;
-            let cur = &mut m.tasks[current].cx as *mut TaskContext;
-            let nxt = &mut m.tasks[next].cx as *const TaskContext;
+            let cur = m.tasks[current].get_task_ctx_mut() as *mut TaskContext;
+            let nxt = m.tasks[next].get_task_ctx() as *const TaskContext;
             drop(m);
 
             unsafe {
@@ -145,7 +170,7 @@ impl TaskManager {
         let current = 0;
         m.current = current;
         m.tasks[current].status = TaskStatus::RUNNING;
-        let nxt = &m.tasks[current].cx;
+        let nxt = m.tasks[current].get_task_ctx();
         let next = nxt as *const TaskContext;
         drop(m);
 
@@ -160,12 +185,17 @@ impl TaskManager {
 
     fn get_current_token(&self) -> usize {
         let m = self.inner.exclusive_access();
-        m.tasks.get(m.current).unwrap().mem_set.page_table.token()
+        m.tasks.get(m.current).unwrap().get_mem().unwrap().page_table.token()
     }
 
     fn get_current_trap_cx(&self) -> &mut TrapContext {
         let m = self.inner.exclusive_access();
-        m.tasks.get(m.current).unwrap().get_trap_ctx()
+        m.tasks.get(m.current).unwrap().get_trap_ctx().unwrap()
+    }
+
+    fn get_current_pid(&self) -> usize {
+        let m = self.inner.exclusive_access();
+        m.tasks.get(m.current).unwrap().pid.0
     }
 }
 
@@ -174,8 +204,8 @@ pub fn get_current_app() -> AppInfo {
     get_app_info(cur)
 }
 
-pub fn exit_current_task() -> ! {
-    mark_current_task_exited();
+pub fn exit_current_task(code:i32) -> ! {
+    mark_current_task_exited(code);
     run_next_task();
     panic!("should not run here")
 }
@@ -185,8 +215,8 @@ pub fn suspend_current_task() {
     run_next_task()
 }
 
-fn mark_current_task_exited() {
-    TASK_MANAGER.mark_current_task_exited()
+fn mark_current_task_exited(code:i32) {
+    TASK_MANAGER.mark_current_task_exited(code)
 }
 
 fn mark_current_task_suspend() {
@@ -205,6 +235,10 @@ pub fn run_first_task() {
 
 pub fn get_current_token() -> usize {
     TASK_MANAGER.get_current_token()
+}
+
+pub fn get_current_pid() -> usize {
+    TASK_MANAGER.get_current_pid()
 }
 
 pub fn get_current_trap_cx() -> &'static mut TrapContext {

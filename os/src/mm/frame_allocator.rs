@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
+use log::debug;
 
 use crate::{println, sync::up::UPSafeCell};
 
