@@ -44,7 +44,7 @@ fn rust_main() -> ! {
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     trace!("start running");
-    task::run_first_task();
+    task::run_tasks();
     sbi::shut_down(false);
     panic!("should not run here");
 }
