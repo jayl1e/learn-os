@@ -6,7 +6,6 @@ use crate::{mm, println, timer};
 
 #[allow(unreachable_code)]
 pub fn sys_exit(code: i32) -> ! {
-    println!("[kernel] process exit with code: {}", code);
     exit_current_task(code);
     panic!("should not run here")
 }

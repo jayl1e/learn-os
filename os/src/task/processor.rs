@@ -35,6 +35,7 @@ impl Processor {
 
     fn mark_current_task_exited(&mut self, code: i32) {
         let mut t = self.current_mut().unwrap();
+        println!("[kernel] process {} exit with code: {}",t.get_pid(), code);
         t.status = TaskStatus::EXITED(code);
         t.inner = None;
     }
@@ -69,16 +70,16 @@ pub fn run_tasks(){
     loop {
         let mut processor = PROCESSOR.exclusive_access();
         let mut tm = processor.tm.exclusive_access();
-        if let Some(next) = tm.fetch(){
-            if let Some(old) = processor.current.take() {
-                let old_status = old.exclusive_access().status ;
-                match old_status{
-                    TaskStatus::READY=>{
-                        tm.add(old);
-                    },
-                    _=>{}
-                }
+        if let Some(old) = processor.current.take() {
+            let old_status = old.exclusive_access().status ;
+            match old_status{
+                TaskStatus::READY=>{
+                    tm.add(old);
+                },
+                _=>{}
             }
+        }
+        if let Some(next) = tm.fetch(){
             debug!("[kernel] scheduling pid {}", next.exclusive_access().get_pid());
             processor.current = Some(next);
             let mut c = processor.current_mut().unwrap();
