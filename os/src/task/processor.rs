@@ -4,38 +4,44 @@ use lazy_static::lazy_static;
 use alloc::sync::Arc;
 use log::debug;
 
-use crate::{loader::AppInfo, println, sbi::shut_down, sync::up::UPSafeCell, task::switch::__switch, trap::context::TrapContext};
+use crate::{
+    loader::AppInfo, println, sbi::shut_down, sync::up::UPSafeCell, task::switch::__switch,
+    trap::context::TrapContext,
+};
 
-use super::{context::TaskContext, task::{TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER}};
+use super::{
+    context::TaskContext,
+    task::{TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER},
+};
 
-struct Processor{
+struct Processor {
     pub current: Option<Arc<UPSafeCell<TaskControlBlock>>>,
     pub idle_ctx: TaskContext,
-    pub tm: &'static UPSafeCell<TaskManager>
+    pub tm: &'static UPSafeCell<TaskManager>,
 }
 
 impl Processor {
-    fn new()->Self{
-        Self{
-            current:None,
-            idle_ctx:TaskContext::zero_init(),
+    fn new() -> Self {
+        Self {
+            current: None,
+            idle_ctx: TaskContext::zero_init(),
             tm: &TASK_MANAGER,
         }
     }
-    fn get_idle_ctx(&mut self)->*mut TaskContext{
+    fn get_idle_ctx(&mut self) -> *mut TaskContext {
         &mut self.idle_ctx as *mut TaskContext
     }
 
-    fn current_mut(&mut self)->Option<RefMut<'_, TaskControlBlock>>{
-        self.current.as_mut().map(|t|{t.exclusive_access()})
+    fn current_mut(&mut self) -> Option<RefMut<'_, TaskControlBlock>> {
+        self.current.as_mut().map(|t| t.exclusive_access())
     }
-    fn current(&self)->Option<RefMut<'_, TaskControlBlock>>{
-        self.current.as_ref().map(|t|{t.exclusive_access()})
+    fn current(&self) -> Option<RefMut<'_, TaskControlBlock>> {
+        self.current.as_ref().map(|t| t.exclusive_access())
     }
 
     fn mark_current_task_exited(&mut self, code: i32) {
         let mut t = self.current_mut().unwrap();
-        println!("[kernel] process {} exit with code: {}",t.get_pid(), code);
+        println!("[kernel] process {} exit with code: {}", t.get_pid(), code);
         t.status = TaskStatus::EXITED(code);
         t.inner = None;
     }
@@ -43,9 +49,10 @@ impl Processor {
         let mut t = self.current_mut().unwrap();
         t.status = TaskStatus::READY;
     }
-    
+
     fn get_current_token(&self) -> usize {
-        self.current().map_or(0, |t|{t.get_mem().unwrap().page_table.token()})
+        self.current()
+            .map_or(0, |t| t.get_mem().unwrap().page_table.token())
     }
 
     fn get_current_trap_cx(&mut self) -> &'static mut TrapContext {
@@ -53,34 +60,32 @@ impl Processor {
     }
 
     fn get_current_pid(&self) -> usize {
-        self.current().map_or(0, |t|{t.get_pid()})
+        self.current().map_or(0, |t| t.get_pid())
     }
 }
 
-
-lazy_static!{
-    static ref PROCESSOR: UPSafeCell<Processor> = unsafe {
-        UPSafeCell::new(
-            Processor::new()
-        )
-    };
+lazy_static! {
+    static ref PROCESSOR: UPSafeCell<Processor> = unsafe { UPSafeCell::new(Processor::new()) };
 }
 
-pub fn run_tasks(){
+pub fn run_tasks() {
     loop {
         let mut processor = PROCESSOR.exclusive_access();
         let mut tm = processor.tm.exclusive_access();
         if let Some(old) = processor.current.take() {
-            let old_status = old.exclusive_access().status ;
-            match old_status{
-                TaskStatus::READY=>{
+            let old_status = old.exclusive_access().status;
+            match old_status {
+                TaskStatus::READY => {
                     tm.add(old);
-                },
-                _=>{}
+                }
+                _ => {}
             }
         }
-        if let Some(next) = tm.fetch(){
-            debug!("[kernel] scheduling pid {}", next.exclusive_access().get_pid());
+        if let Some(next) = tm.fetch() {
+            debug!(
+                "[kernel] scheduling pid {}",
+                next.exclusive_access().get_pid()
+            );
             processor.current = Some(next);
             let mut c = processor.current_mut().unwrap();
             c.status = TaskStatus::RUNNING;
@@ -99,9 +104,13 @@ pub fn run_tasks(){
     }
 }
 
-
 pub fn get_current_app() -> AppInfo {
-    PROCESSOR.exclusive_access().current().unwrap().get_app_info().clone()
+    PROCESSOR
+        .exclusive_access()
+        .current()
+        .unwrap()
+        .get_app_info()
+        .clone()
 }
 
 pub fn exit_current_task(code: i32) -> ! {
@@ -123,8 +132,7 @@ fn mark_current_task_exited(code: i32) {
     PROCESSOR.exclusive_access().mark_current_task_exited(code)
 }
 
-
-fn schedule(old_task_ctx: *mut TaskContext){
+fn schedule(old_task_ctx: *mut TaskContext) {
     let mut p = PROCESSOR.exclusive_access();
     let idle_ctx = p.get_idle_ctx();
     drop(p);

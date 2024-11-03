@@ -1,24 +1,15 @@
-use alloc::collections::btree_map::BTreeMap;
 use alloc::collections::vec_deque::VecDeque;
 use alloc::sync::Arc;
-use alloc::{collections, task};
-use alloc::string::{String, ToString};
 use lazy_static::lazy_static;
-use log::debug;
 
 use crate::loader::{get_app_info, get_num_app, AppInfo};
-use crate::mm::{
-    kernel_stack_position, MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT,
-};
-use crate::println;
-use crate::sbi::shut_down;
+use crate::mm::{MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT};
 use crate::sync::up::UPSafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
 
 use super::context::TaskContext;
 use super::pid::{KernelStack, PIDHandle};
-use super::switch::__switch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskStatus {
@@ -83,7 +74,7 @@ impl TaskControlBlock {
         );
         block
     }
-    pub fn get_pid(&self)->usize{
+    pub fn get_pid(&self) -> usize {
         self.pid.0
     }
     pub fn get_task_ctx_ptr(&mut self) -> *mut TaskContext {
@@ -96,16 +87,13 @@ impl TaskControlBlock {
         self.inner.as_ref().map(|b| &b.mem_set)
     }
 
-    pub fn get_app_info(&self)->&AppInfo{
+    pub fn get_app_info(&self) -> &AppInfo {
         &self.app_info
     }
 }
 
-fn new_task(app: AppInfo)->UPSafeCell<TaskControlBlock>{
-    unsafe{
-        UPSafeCell::new(TaskControlBlock::new(app))
-    }
-
+fn new_task(app: AppInfo) -> UPSafeCell<TaskControlBlock> {
+    unsafe { UPSafeCell::new(TaskControlBlock::new(app)) }
 }
 
 impl TaskControlBlockInner {
@@ -115,29 +103,27 @@ impl TaskControlBlockInner {
 }
 
 pub struct TaskManager {
-    tasks: collections::VecDeque<Arc<UPSafeCell<TaskControlBlock>>>
+    tasks: VecDeque<Arc<UPSafeCell<TaskControlBlock>>>,
 }
 
 lazy_static! {
     pub static ref TASK_MANAGER: UPSafeCell<TaskManager> = {
         let num_app = get_num_app();
-        let mut tm = TaskManager{tasks: VecDeque::new()};
+        let mut tm = TaskManager {
+            tasks: VecDeque::new(),
+        };
         for i in 0..num_app {
             tm.add(Arc::new(new_task(get_app_info(i))));
         }
-        unsafe {
-            UPSafeCell::new(
-                tm
-            )
-        }
+        unsafe { UPSafeCell::new(tm) }
     };
 }
 
 impl TaskManager {
-    pub fn add(&mut self, tcb: Arc<UPSafeCell<TaskControlBlock>>){
+    pub fn add(&mut self, tcb: Arc<UPSafeCell<TaskControlBlock>>) {
         self.tasks.push_back(tcb);
     }
-    pub fn fetch(&mut self)->Option<Arc<UPSafeCell<TaskControlBlock>>>{
+    pub fn fetch(&mut self) -> Option<Arc<UPSafeCell<TaskControlBlock>>> {
         self.tasks.pop_front()
     }
 }

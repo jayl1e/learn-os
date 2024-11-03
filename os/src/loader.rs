@@ -12,7 +12,7 @@ struct AppInfoBuf {
     end: usize,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct AppInfo {
     pub name: &'static str,
     pub mem: &'static [u8],
