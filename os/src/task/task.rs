@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use log::debug;
 
-use crate::loader::{get_app_info, get_num_app, AppInfo};
+use crate::loader::{get_app_info, get_app_info_by_name, get_num_app, AppInfo};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT};
 use crate::println;
 use crate::sync::up::UPSafeCell;
@@ -157,15 +157,24 @@ pub struct TaskManager {
 
 lazy_static! {
     pub static ref TASK_MANAGER: UPSafeCell<TaskManager> = {
-        let num_app = get_num_app();
         let mut tm = TaskManager {
             tasks: VecDeque::new(),
         };
-        for i in 0..num_app {
-            tm.add(new_task(get_app_info(i)));
-        }
         unsafe { UPSafeCell::new(tm) }
     };
+}
+
+pub fn add_init_proc(){
+    let mut m = TASK_MANAGER.exclusive_access();
+    let init_proc = get_app_info_by_name("init");
+    match init_proc {
+        None=>{
+            panic!("no init process")
+        },
+        Some(app)=>{
+            m.add(new_task(app));
+        }
+    }
 }
 
 impl TaskManager {

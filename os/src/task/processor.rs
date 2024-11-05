@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     context::TaskContext,
-    task::{fork, TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER},
+    task::{add_init_proc, fork, TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER},
 };
 
 struct Processor {
@@ -163,4 +163,10 @@ pub fn fork_current()->usize{
     drop(c);
     TASK_MANAGER.exclusive_access().add(child);
     pid
+}
+
+pub fn exec_current(app: AppInfo){
+    let mut p = PROCESSOR.exclusive_access();
+    let mut t = p.current_mut().unwrap();
+    t.exec(app);
 }

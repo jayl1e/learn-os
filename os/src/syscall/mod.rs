@@ -21,6 +21,7 @@ pub fn syscall(syscall_id: usize, a1: usize, a2: usize, a3: usize) -> Option<isi
         SYSCALL_GET_TIME => Some(process::sys_get_time()),
         SYSCALL_GETPID => Some(process::sys_get_pid()),
         SYSCALL_FORK => Some(process::sys_fork()),
+        SYSCALL_EXEC=>Some(process::sys_exec(a1 as *mut u8)),
         _ => None,
     }
 }

@@ -55,6 +55,8 @@ pub fn trap_handler(cx: &mut TrapContext) -> ! {
             );
             match rt {
                 Some(rt) => {
+                    // exec may change trap context
+                    let cx = get_current_trap_cx();
                     cx.registers[10] = rt as usize;
                 }
                 None => {

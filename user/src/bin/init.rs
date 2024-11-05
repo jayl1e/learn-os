@@ -5,23 +5,31 @@ use user_lib::*;
 
 #[no_mangle]
 fn main() -> i32 {
-    println!("I am init");
-    match fork() {
-        0 => {
-            println!("I am child process")
-        }
-        child => {
-            println!("I am parent process, child is {}", child)
-        }
-    }
+    println!("init process start");
+    exec_hello();
+    exec_shell();
+    //init_loop();
+    println!("init exit");
     0
 }
 
 fn exec_shell() {
-    let v = exec("user_shell");
-    if v != 0 {
-        panic!("exec user shell failed")
+    if fork()==0{
+        let v = exec("user_shell");
+        if v != 0 {
+            panic!("exec user shell failed")
+        }
     }
+}
+
+fn exec_hello(){
+    if fork()==0{
+        let v = exec("00hello");
+        if v != 0 {
+            panic!("exec user shell failed")
+        }
+    }
+
 }
 
 fn init_loop() {

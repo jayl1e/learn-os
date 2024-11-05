@@ -14,7 +14,7 @@ pub fn init() {
 }
 
 pub use address::{PhysPageNum, VirtAddress};
-pub use io::{Reader, UserBuf, UserBufMut, Writer};
+pub use io::{Reader, UserBuf, UserBufMut, Writer, iter_from_user_ptr};
 pub use memory_set::{
     kernel_stack_position, MapPermission, MemorySet, KERNEL_SPACE, TRAMPOLINE, TRAP_CONTEXT,
 };
