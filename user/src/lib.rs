@@ -61,6 +61,7 @@ pub fn get_time() -> isize {
 }
 
 const EAGAIN: isize = -2;
+pub const ENOCHILDREN:isize = -3;
 pub fn wait(code: &mut i32) -> isize {
     loop {
         match syscall::sys_waitpid(-1, code as *mut i32) {

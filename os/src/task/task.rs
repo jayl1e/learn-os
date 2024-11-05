@@ -28,8 +28,8 @@ pub struct TaskControlBlock {
     pub status: TaskStatus,
     cx: TaskContext,
     app_info: AppInfo,
-    parent: Option<Weak<UPSafeCell<TaskControlBlock>>>,
-    children: Vec<Arc<UPSafeCell<TaskControlBlock>>>,
+    pub parent: Option<Weak<UPSafeCell<TaskControlBlock>>>,
+    pub children: Vec<Arc<UPSafeCell<TaskControlBlock>>>,
     pub inner: Option<TaskControlBlockInner>,
 }
 
@@ -79,6 +79,13 @@ impl TaskControlBlock {
     }
     pub fn get_mem(&self) -> Option<&MemorySet> {
         self.inner.as_ref().map(|b| &b.mem_set)
+    }
+
+    pub fn exit_code(&self)->Option<i32>{
+        match self.status {
+            TaskStatus::EXITED(i)=>Some(i),
+            _=>None
+        }
     }
 
     pub fn get_app_info(&self) -> &AppInfo {
@@ -153,12 +160,14 @@ impl TaskControlBlockInner {
 
 pub struct TaskManager {
     tasks: VecDeque<Arc<UPSafeCell<TaskControlBlock>>>,
+    init_proc: Option<Arc<UPSafeCell<TaskControlBlock>>>,
 }
 
 lazy_static! {
     pub static ref TASK_MANAGER: UPSafeCell<TaskManager> = {
-        let mut tm = TaskManager {
+        let tm = TaskManager {
             tasks: VecDeque::new(),
+            init_proc:None,
         };
         unsafe { UPSafeCell::new(tm) }
     };
@@ -172,9 +181,15 @@ pub fn add_init_proc(){
             panic!("no init process")
         },
         Some(app)=>{
-            m.add(new_task(app));
+            let init = new_task(app.clone());
+            m.add(init.clone());
+            m.init_proc.replace(init);
         }
     }
+}
+
+pub fn get_init_proc()->Arc<UPSafeCell<TaskControlBlock>>{
+    TASK_MANAGER.exclusive_access().init_proc.as_ref().unwrap().clone()
 }
 
 impl TaskManager {

@@ -8,7 +8,7 @@ fn main() -> i32 {
     println!("init process start");
     exec_hello();
     exec_shell();
-    //init_loop();
+    init_loop();
     println!("init exit");
     0
 }
@@ -29,7 +29,6 @@ fn exec_hello(){
             panic!("exec user shell failed")
         }
     }
-
 }
 
 fn init_loop() {
@@ -38,6 +37,9 @@ fn init_loop() {
         let pid = wait(&mut exit_code);
         if pid > 0 {
             println!("accept exit code {} from {}", exit_code, pid);
+        } else if pid == ENOCHILDREN{
+            println!("no sub process found existing");
+            break;
         } else {
             panic!("bad wait pid code");
         }

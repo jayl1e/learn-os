@@ -5,7 +5,7 @@ use alloc::sync::Arc;
 use log::debug;
 
 use crate::{
-    loader::AppInfo, println, sbi::shut_down, sync::up::UPSafeCell, task::switch::__switch,
+    loader::AppInfo, println, sbi::shut_down, sync::up::UPSafeCell, task::{switch::__switch, task::get_init_proc},
     trap::context::TrapContext,
 };
 
@@ -44,23 +44,28 @@ impl Processor {
         println!("[kernel] process {} exit with code: {}", t.get_pid(), code);
         t.status = TaskStatus::EXITED(code);
         t.inner = None;
+        if t.parent.is_none(){
+            println!("[kernel] init exited")
+        }else{
+            for kid in &t.children{
+                let initproc = get_init_proc();
+                kid.exclusive_access().parent.replace(Arc::downgrade(&initproc));
+                initproc.exclusive_access().children.push(kid.clone());
+            }
+        }
     }
     fn mark_current_task_suspend(&mut self) {
         let mut t = self.current_mut().unwrap();
         t.status = TaskStatus::READY;
     }
 
-    fn get_current_token(&self) -> usize {
+    pub fn get_current_token(&self) -> usize {
         self.current()
             .map_or(0, |t| t.get_mem().unwrap().page_table.token())
     }
 
     fn get_current_trap_cx(&mut self) -> &'static mut TrapContext {
         self.current_mut().unwrap().get_trap_ctx().unwrap()
-    }
-
-    fn get_current_pid(&self) -> usize {
-        self.current().map_or(0, |t| t.get_pid())
     }
 }
 
@@ -146,10 +151,6 @@ pub fn get_current_token() -> usize {
     PROCESSOR.exclusive_access().get_current_token()
 }
 
-pub fn get_current_pid() -> usize {
-    PROCESSOR.exclusive_access().get_current_pid()
-}
-
 pub fn get_current_trap_cx() -> &'static mut TrapContext {
     PROCESSOR.exclusive_access().get_current_trap_cx()
 }
@@ -169,4 +170,8 @@ pub fn exec_current(app: AppInfo){
     let mut p = PROCESSOR.exclusive_access();
     let mut t = p.current_mut().unwrap();
     t.exec(app);
+}
+
+pub fn get_current_task()->Option<Arc<UPSafeCell<TaskControlBlock>>>{
+    PROCESSOR.exclusive_access().current.clone()
 }

@@ -136,6 +136,22 @@ pub fn iter_from_user_ptr(ptr: *const u8, token: usize)->BytePtrIter{
     }
 }
 
+pub fn translate_ptr_mut<T>(ptr: *mut T, token: usize)->Option<&'static mut T>{
+    let pt = PageTable::from_token(token);
+    let va = VirtAddress::from(ptr as usize);
+    match  pt.translate(va.floor()){
+        None=>None,
+        Some(e)=>{
+            if !e.writable(){
+                None
+            }else{
+                Some(e.ppn().get_mut_at_offset(va.page_offset()))
+            }
+        }
+        
+    }
+}
+
 pub struct BytePtrIter{
     pt: PageTable,
     ptr: VirtAddress,
