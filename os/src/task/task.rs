@@ -45,33 +45,20 @@ pub struct TaskControlBlockInner {
 }
 
 impl TaskControlBlock {
-    pub fn new(app: AppInfo) -> Self {
+    pub fn exec(&mut self, app: AppInfo){
         let (mem_set, usp, entry) = MemorySet::new_app_from_elf(&app.mem);
+        self.app_info = app;
         let trap_ctx_ppn = mem_set
             .page_table
             .translate(VirtAddress::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
-        let status = TaskStatus::READY;
-        let pid = PIDHandle::new();
-        let kstack = KernelStack::new(&pid);
-        let ksp = kstack.get_top();
-        let block_inner = TaskControlBlockInner {
-            stack: kstack,
-            mem_set,
-            trap_ctx_ppn,
-            base_size: usp,
-        };
-        let trap_ctx = block_inner.get_trap_ctx();
-        let block = Self {
-            pid,
-            status,
-            app_info: app,
-            cx: TaskContext::goto_trap_return(ksp),
-            children: Vec::new(),
-            parent: None,
-            inner: Some(block_inner),
-        };
+        let inner = self.inner.as_mut().unwrap();
+        inner.mem_set=mem_set;
+        inner.trap_ctx_ppn = trap_ctx_ppn;
+        inner.base_size = usp;
+        let ksp = inner.stack.get_top();
+        let trap_ctx = inner.get_trap_ctx();
         *trap_ctx = TrapContext::init_new_app(
             usp,
             entry,
@@ -79,7 +66,7 @@ impl TaskControlBlock {
             ksp,
             trap_handler as usize,
         );
-        block
+        self.cx= TaskContext::goto_trap_return(ksp)
     }
     pub fn get_pid(&self) -> usize {
         self.pid.0
@@ -99,8 +86,27 @@ impl TaskControlBlock {
     }
 }
 
-fn new_task(app: AppInfo) -> UPSafeCell<TaskControlBlock> {
-    unsafe { UPSafeCell::new(TaskControlBlock::new(app)) }
+fn new_task(app: AppInfo) -> Arc<UPSafeCell<TaskControlBlock>> {
+    let status = TaskStatus::READY;
+    let pid = PIDHandle::new();
+    let kstack = KernelStack::new(&pid);
+    let block_inner = TaskControlBlockInner {
+        stack: kstack,
+        mem_set:MemorySet::bare_new(),
+        trap_ctx_ppn:PhysPageNum(0),
+        base_size: 0,
+    };
+    let mut block = TaskControlBlock{
+        pid,
+        status,
+        app_info: app.clone(),
+        cx: TaskContext::zero_init(),
+        children: Vec::new(),
+        parent: None,
+        inner: Some(block_inner),
+    };
+    block.exec(app);
+    Arc::new(unsafe { UPSafeCell::new(block) })
 }
 
 pub fn fork(parent: Arc<UPSafeCell<TaskControlBlock>>) -> Arc<UPSafeCell<TaskControlBlock>> {
@@ -156,7 +162,7 @@ lazy_static! {
             tasks: VecDeque::new(),
         };
         for i in 0..num_app {
-            tm.add(Arc::new(new_task(get_app_info(i))));
+            tm.add(new_task(get_app_info(i)));
         }
         unsafe { UPSafeCell::new(tm) }
     };
