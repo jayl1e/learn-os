@@ -128,54 +128,51 @@ impl Writer for UserBufMut {
     }
 }
 
-pub fn iter_from_user_ptr(ptr: *const u8, token: usize)->BytePtrIter{
-    BytePtrIter{
+pub fn iter_from_user_ptr(ptr: *const u8, token: usize) -> BytePtrIter {
+    BytePtrIter {
         pt: PageTable::from_token(token),
         ptr: VirtAddress(ptr as usize),
-        ppn:None
+        ppn: None,
     }
 }
 
-pub fn translate_ptr_mut<T>(ptr: *mut T, token: usize)->Option<&'static mut T>{
+pub fn translate_ptr_mut<T>(ptr: *mut T, token: usize) -> Option<&'static mut T> {
     let pt = PageTable::from_token(token);
     let va = VirtAddress::from(ptr as usize);
-    match  pt.translate(va.floor()){
-        None=>None,
-        Some(e)=>{
-            if !e.writable(){
+    match pt.translate(va.floor()) {
+        None => None,
+        Some(e) => {
+            if !e.writable() {
                 None
-            }else{
+            } else {
                 Some(e.ppn().get_mut_at_offset(va.page_offset()))
             }
         }
-        
     }
 }
 
-pub struct BytePtrIter{
+pub struct BytePtrIter {
     pt: PageTable,
     ptr: VirtAddress,
-    ppn: Option<PhysPageNum>
+    ppn: Option<PhysPageNum>,
 }
 
 impl Iterator for BytePtrIter {
     type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.ppn.is_none(){
+        if self.ppn.is_none() {
             let entry = self.pt.translate(self.ptr.floor());
             match entry {
-                None=>{
+                None => {
                     return None;
-                },
-                Some(e)=>{
-                    self.ppn = Some(e.ppn())
                 }
+                Some(e) => self.ppn = Some(e.ppn()),
             }
         }
-        let b :u8= *self.ppn.unwrap().get_mut_at_offset(self.ptr.page_offset());
-        self.ptr.0+=1;
-        if self.ptr.page_offset() == 0{
-            self.ppn=None
+        let b: u8 = *self.ppn.unwrap().get_mut_at_offset(self.ptr.page_offset());
+        self.ptr.0 += 1;
+        if self.ptr.page_offset() == 0 {
+            self.ppn = None
         }
         Some(b)
     }

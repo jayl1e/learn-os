@@ -5,7 +5,11 @@ use alloc::sync::Arc;
 use log::debug;
 
 use crate::{
-    loader::AppInfo, println, sbi::shut_down, sync::up::UPSafeCell, task::{switch::__switch, task::get_init_proc},
+    loader::AppInfo,
+    println,
+    sbi::shut_down,
+    sync::up::UPSafeCell,
+    task::{switch::__switch, task::get_init_proc},
     trap::context::TrapContext,
 };
 
@@ -44,12 +48,14 @@ impl Processor {
         println!("[kernel] process {} exit with code: {}", t.get_pid(), code);
         t.status = TaskStatus::EXITED(code);
         t.inner = None;
-        if t.parent.is_none(){
+        if t.parent.is_none() {
             println!("[kernel] init exited")
-        }else{
-            for kid in &t.children{
+        } else {
+            for kid in &t.children {
                 let initproc = get_init_proc();
-                kid.exclusive_access().parent.replace(Arc::downgrade(&initproc));
+                kid.exclusive_access()
+                    .parent
+                    .replace(Arc::downgrade(&initproc));
                 initproc.exclusive_access().children.push(kid.clone());
             }
         }
@@ -155,23 +161,23 @@ pub fn get_current_trap_cx() -> &'static mut TrapContext {
     PROCESSOR.exclusive_access().get_current_trap_cx()
 }
 
-pub fn fork_current()->usize{
+pub fn fork_current() -> usize {
     let src = PROCESSOR.exclusive_access().current.clone().unwrap();
     let child = fork(src);
     let c = child.exclusive_access();
-    c.get_trap_ctx().unwrap().registers[10]=0; // a0 = 0 for forked child
+    c.get_trap_ctx().unwrap().registers[10] = 0; // a0 = 0 for forked child
     let pid = c.get_pid();
     drop(c);
     TASK_MANAGER.exclusive_access().add(child);
     pid
 }
 
-pub fn exec_current(app: AppInfo){
+pub fn exec_current(app: AppInfo) {
     let mut p = PROCESSOR.exclusive_access();
     let mut t = p.current_mut().unwrap();
     t.exec(app);
 }
 
-pub fn get_current_task()->Option<Arc<UPSafeCell<TaskControlBlock>>>{
+pub fn get_current_task() -> Option<Arc<UPSafeCell<TaskControlBlock>>> {
     PROCESSOR.exclusive_access().current.clone()
 }

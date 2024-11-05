@@ -45,7 +45,7 @@ pub struct TaskControlBlockInner {
 }
 
 impl TaskControlBlock {
-    pub fn exec(&mut self, app: AppInfo){
+    pub fn exec(&mut self, app: AppInfo) {
         let (mem_set, usp, entry) = MemorySet::new_app_from_elf(&app.mem);
         self.app_info = app;
         let trap_ctx_ppn = mem_set
@@ -54,7 +54,7 @@ impl TaskControlBlock {
             .unwrap()
             .ppn();
         let inner = self.inner.as_mut().unwrap();
-        inner.mem_set=mem_set;
+        inner.mem_set = mem_set;
         inner.trap_ctx_ppn = trap_ctx_ppn;
         inner.base_size = usp;
         let ksp = inner.stack.get_top();
@@ -66,7 +66,7 @@ impl TaskControlBlock {
             ksp,
             trap_handler as usize,
         );
-        self.cx= TaskContext::goto_trap_return(ksp)
+        self.cx = TaskContext::goto_trap_return(ksp)
     }
     pub fn get_pid(&self) -> usize {
         self.pid.0
@@ -81,10 +81,10 @@ impl TaskControlBlock {
         self.inner.as_ref().map(|b| &b.mem_set)
     }
 
-    pub fn exit_code(&self)->Option<i32>{
+    pub fn exit_code(&self) -> Option<i32> {
         match self.status {
-            TaskStatus::EXITED(i)=>Some(i),
-            _=>None
+            TaskStatus::EXITED(i) => Some(i),
+            _ => None,
         }
     }
 
@@ -99,11 +99,11 @@ fn new_task(app: AppInfo) -> Arc<UPSafeCell<TaskControlBlock>> {
     let kstack = KernelStack::new(&pid);
     let block_inner = TaskControlBlockInner {
         stack: kstack,
-        mem_set:MemorySet::bare_new(),
-        trap_ctx_ppn:PhysPageNum(0),
+        mem_set: MemorySet::bare_new(),
+        trap_ctx_ppn: PhysPageNum(0),
         base_size: 0,
     };
-    let mut block = TaskControlBlock{
+    let mut block = TaskControlBlock {
         pid,
         status,
         app_info: app.clone(),
@@ -144,10 +144,8 @@ pub fn fork(parent: Arc<UPSafeCell<TaskControlBlock>>) -> Arc<UPSafeCell<TaskCon
         inner: Some(block_inner),
     };
     //every the same except kernel sp
-    block.get_trap_ctx().unwrap().kernel_sp=ksp;
-    let child = Arc::new(unsafe {
-      UPSafeCell::new(block)  
-    });
+    block.get_trap_ctx().unwrap().kernel_sp = ksp;
+    let child = Arc::new(unsafe { UPSafeCell::new(block) });
     src.children.push(child.clone());
     child
 }
@@ -167,20 +165,20 @@ lazy_static! {
     pub static ref TASK_MANAGER: UPSafeCell<TaskManager> = {
         let tm = TaskManager {
             tasks: VecDeque::new(),
-            init_proc:None,
+            init_proc: None,
         };
         unsafe { UPSafeCell::new(tm) }
     };
 }
 
-pub fn add_init_proc(){
+pub fn add_init_proc() {
     let mut m = TASK_MANAGER.exclusive_access();
     let init_proc = get_app_info_by_name("init");
     match init_proc {
-        None=>{
+        None => {
             panic!("no init process")
-        },
-        Some(app)=>{
+        }
+        Some(app) => {
             let init = new_task(app.clone());
             m.add(init.clone());
             m.init_proc.replace(init);
@@ -188,8 +186,13 @@ pub fn add_init_proc(){
     }
 }
 
-pub fn get_init_proc()->Arc<UPSafeCell<TaskControlBlock>>{
-    TASK_MANAGER.exclusive_access().init_proc.as_ref().unwrap().clone()
+pub fn get_init_proc() -> Arc<UPSafeCell<TaskControlBlock>> {
+    TASK_MANAGER
+        .exclusive_access()
+        .init_proc
+        .as_ref()
+        .unwrap()
+        .clone()
 }
 
 impl TaskManager {

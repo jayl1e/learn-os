@@ -137,11 +137,9 @@ impl PhysPageNum {
         unsafe { &mut *(pa as *mut T) }
     }
 
-    pub fn get_mut_at_offset<T>(self, offset: usize)->&'static mut T{
-        let pa:usize = PhysAddress::from(self).into();
-        unsafe {
-            &mut *((pa + offset) as *mut T)
-        }
+    pub fn get_mut_at_offset<T>(self, offset: usize) -> &'static mut T {
+        let pa: usize = PhysAddress::from(self).into();
+        unsafe { &mut *((pa + offset) as *mut T) }
     }
 }
 
