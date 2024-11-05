@@ -13,7 +13,6 @@ fn main() -> i32 {
     match name {
         Some(name) => {
             println!("my app name is: {}, I'll run some time", name);
-            spend_some_time();
             println!("00hello is going to exit")
         }
         None => {
@@ -23,12 +22,3 @@ fn main() -> i32 {
     0
 }
 
-fn spend_some_time() {
-    let mut v = 0;
-    let ptr = &raw mut v;
-    for i in 0..100000000 {
-        unsafe {
-            ptr.write_volatile(i);
-        }
-    }
-}

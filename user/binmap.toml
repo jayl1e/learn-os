@@ -1,8 +1,28 @@
 [[bin]]
+name="00hello"
+file="target/riscv64gc-unknown-none-elf/release/00hello"
+
+[[bin]]
 name="01print_stack"
 file="target/riscv64gc-unknown-none-elf/release/01print_stack"
 
 [[bin]]
+name="02sleep"
+file="target/riscv64gc-unknown-none-elf/release/02sleep"
+
+[[bin]]
+name="03priv_inst"
+file="target/riscv64gc-unknown-none-elf/release/03priv_inst"
+
+[[bin]]
+name="04csr"
+file="target/riscv64gc-unknown-none-elf/release/04csr"
+
+[[bin]]
 name="init"
 file="target/riscv64gc-unknown-none-elf/release/init"
+
+[[bin]]
+name="user_shell"
+file="target/riscv64gc-unknown-none-elf/release/user_shell"
 
