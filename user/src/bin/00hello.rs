@@ -12,8 +12,7 @@ fn main() -> i32 {
     let name = user_lib::get_task_info(&mut namebuf[..]);
     match name {
         Some(name) => {
-            println!("my app name is: {}, I'll run some time", name);
-            println!("00hello is going to exit")
+            println!("my app name is: {}, going to exit", name);
         }
         None => {
             println!("get name failed");
