@@ -75,8 +75,8 @@ impl PageTable {
         assert_eq!(
             false,
             pte.is_valid(),
-            "map an already valid page: vpn {:?}",
-            vpn
+            "map an already valid page: vpn {}",
+            vpn.0
         );
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
     }

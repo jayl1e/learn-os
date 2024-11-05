@@ -40,6 +40,7 @@ enum MapType {
 }
 
 bitflags! {
+    #[derive(Clone)]
     pub struct MapPermission:u8{
         const R = 1<<1;
         const W = 1<<2;
@@ -55,6 +56,14 @@ impl MapArea {
             frames: BTreeMap::new(),
             map_type: tp,
             map_perm: perm,
+        }
+    }
+    fn fork(&self)->Self{
+        Self{
+            vpns: self.vpns.clone(),
+            frames: BTreeMap::new(),
+            map_type: self.map_type,
+            map_perm:self.map_perm.clone(),
         }
     }
     fn map(&mut self, pt: &mut PageTable) {
@@ -122,6 +131,24 @@ impl MemorySet {
             areas: Vec::new(),
         }
     }
+    pub fn fork(&self) -> Self{
+        let mut pt = PageTable::new();
+        let mut areas = Vec::new();
+        areas.reserve(self.areas.len());
+        for o in self.areas.iter(){
+            let mut n = o.fork();
+            n.map(&mut pt);
+            for vpn in &n.vpns{
+                let oppn = self.page_table.translate(vpn).unwrap().ppn().bytes_mut();
+                let nppn = pt.translate(vpn).unwrap().ppn().bytes_mut();
+                nppn.copy_from_slice(oppn);
+            }
+            areas.push(n);
+        }
+        let mut ms = Self { page_table: pt, areas: areas };
+        ms.map_trampoline();
+        ms
+    }
 
     fn push(&mut self, mut area: MapArea, data: Option<&[u8]>) {
         area.map(&mut self.page_table);
@@ -144,7 +171,8 @@ impl MemorySet {
             }
         }
         to_remove.map(|idx| {
-            self.areas.swap_remove(idx);
+            let mut area = self.areas.swap_remove(idx);
+            area.unmap(&mut self.page_table);
             ()
         })
     }

@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     context::TaskContext,
-    task::{TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER},
+    task::{fork, TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER},
 };
 
 struct Processor {
@@ -92,6 +92,7 @@ pub fn run_tasks() {
             let nxt = c.get_task_ctx_ptr();
             drop(c);
             let cur = processor.get_idle_ctx();
+            drop(tm);
             drop(processor);
 
             unsafe {
@@ -151,4 +152,15 @@ pub fn get_current_pid() -> usize {
 
 pub fn get_current_trap_cx() -> &'static mut TrapContext {
     PROCESSOR.exclusive_access().get_current_trap_cx()
+}
+
+pub fn fork_current()->usize{
+    let src = PROCESSOR.exclusive_access().current.clone().unwrap();
+    let child = fork(src);
+    let c = child.exclusive_access();
+    c.get_trap_ctx().unwrap().registers[10]=0; // a0 = 0 for forked child
+    let pid = c.get_pid();
+    drop(c);
+    TASK_MANAGER.exclusive_access().add(child);
+    pid
 }

@@ -58,7 +58,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> ! {
                     cx.registers[10] = rt as usize;
                 }
                 None => {
-                    println!("[kernel] bad syscall, killing process");
+                    println!("[kernel] bad syscall {}, killing process", cx.registers[17]);
                     exit_current_task(ECODE_BAD_PROCESS_HEHAVIOR);
                 }
             }

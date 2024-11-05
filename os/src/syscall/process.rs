@@ -1,6 +1,6 @@
 use crate::mm::Writer;
 use crate::task::{
-    exit_current_task, get_current_app, get_current_pid, get_current_token, suspend_current_task,
+    exit_current_task, fork_current, get_current_app, get_current_pid, get_current_token, suspend_current_task
 };
 use crate::{mm, println, timer};
 
@@ -40,4 +40,8 @@ pub fn sys_get_time() -> isize {
 
 pub fn sys_get_pid() -> isize {
     get_current_pid() as isize
+}
+
+pub fn sys_fork()->isize{
+    fork_current() as isize
 }

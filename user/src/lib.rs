@@ -122,7 +122,7 @@ pub fn get_char() -> Option<u8> {
     match read(FD_STDIN, &mut buf) {
         0=>None,
         1=>Some(buf[0]),
-        other =>{
+        _other =>{
             panic!("read stdin failed")
         }
     }

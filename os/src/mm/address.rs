@@ -138,6 +138,7 @@ impl PhysPageNum {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct VPNRange {
     pub l: VirtPageNum,
     pub r: VirtPageNum,

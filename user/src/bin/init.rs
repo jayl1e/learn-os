@@ -5,12 +5,13 @@ use user_lib::*;
 
 #[no_mangle]
 fn main() -> i32 {
+    println!("I am init");
     match fork() {
         0 => {
-            exec_shell();
+            println!("I am child process")
         }
-        _ => {
-            init_loop();
+        child => {
+            println!("I am parent process, child is {}", child)
         }
     }
     0

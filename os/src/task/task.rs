@@ -1,9 +1,12 @@
 use alloc::collections::vec_deque::VecDeque;
-use alloc::sync::Arc;
+use alloc::sync::{Arc, Weak};
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
+use log::debug;
 
 use crate::loader::{get_app_info, get_num_app, AppInfo};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT};
+use crate::println;
 use crate::sync::up::UPSafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
@@ -25,6 +28,8 @@ pub struct TaskControlBlock {
     pub status: TaskStatus,
     cx: TaskContext,
     app_info: AppInfo,
+    parent: Option<Weak<UPSafeCell<TaskControlBlock>>>,
+    children: Vec<Arc<UPSafeCell<TaskControlBlock>>>,
     pub inner: Option<TaskControlBlockInner>,
 }
 
@@ -63,6 +68,8 @@ impl TaskControlBlock {
             status,
             app_info: app,
             cx: TaskContext::goto_trap_return(ksp),
+            children: Vec::new(),
+            parent: None,
             inner: Some(block_inner),
         };
         *trap_ctx = TrapContext::init_new_app(
@@ -94,6 +101,42 @@ impl TaskControlBlock {
 
 fn new_task(app: AppInfo) -> UPSafeCell<TaskControlBlock> {
     unsafe { UPSafeCell::new(TaskControlBlock::new(app)) }
+}
+
+pub fn fork(parent: Arc<UPSafeCell<TaskControlBlock>>) -> Arc<UPSafeCell<TaskControlBlock>> {
+    let mut src = parent.exclusive_access();
+    let mem_set = src.inner.as_ref().unwrap().mem_set.fork();
+    let trap_ctx_ppn = mem_set
+        .page_table
+        .translate(VirtAddress::from(TRAP_CONTEXT).into())
+        .unwrap()
+        .ppn();
+    let status = TaskStatus::READY;
+    let pid = PIDHandle::new();
+    let kstack = KernelStack::new(&pid);
+    let ksp = kstack.get_top();
+    let block_inner = TaskControlBlockInner {
+        stack: kstack,
+        mem_set,
+        trap_ctx_ppn,
+        base_size: src.inner.as_ref().unwrap().base_size,
+    };
+    let block = TaskControlBlock {
+        pid,
+        status,
+        app_info: src.app_info.clone(),
+        cx: TaskContext::goto_trap_return(ksp),
+        children: Vec::new(),
+        parent: Some(Arc::downgrade(&parent)),
+        inner: Some(block_inner),
+    };
+    //every the same except kernel sp
+    block.get_trap_ctx().unwrap().kernel_sp=ksp;
+    let child = Arc::new(unsafe {
+      UPSafeCell::new(block)  
+    });
+    src.children.push(child.clone());
+    child
 }
 
 impl TaskControlBlockInner {
