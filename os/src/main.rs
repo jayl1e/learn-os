@@ -41,8 +41,8 @@ fn rust_main() -> ! {
 
     println!("[kernel] hello going to run apps");
     trace!("start loading");
-    //trap::enable_timer_interrupt();
-    //timer::set_next_trigger();
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
     trace!("start running");
     task::run_tasks();
     sbi::shut_down(false);
