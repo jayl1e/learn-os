@@ -7,7 +7,6 @@ use crate::{
     task::{exit_current_task, get_current_token, get_current_trap_cx, suspend_current_task},
     timer,
 };
-use context::TrapContext;
 use core::arch::{asm, global_asm};
 use log::debug;
 use riscv::register::{
@@ -39,7 +38,7 @@ fn trap_from_kernel() -> ! {
 const ECODE_BAD_PROCESS_HEHAVIOR: i32 = 137;
 
 #[no_mangle]
-pub fn trap_handler(cx: &mut TrapContext) -> ! {
+pub fn trap_handler() -> ! {
     set_trap_from_kernel();
     let cx = get_current_trap_cx();
     let scause = scause::read();

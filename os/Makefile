@@ -1,4 +1,4 @@
-PROFILE ?= release
+PROFILE ?= debug
 build:
 ifeq ($(PROFILE), debug)
 	LOG=DEBUG cargo build
