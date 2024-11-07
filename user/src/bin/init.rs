@@ -6,7 +6,6 @@ use user_lib::*;
 #[no_mangle]
 fn main() -> i32 {
     println!("init process start");
-    exec_hello();
     exec_shell();
     init_loop();
     println!("init exit");
@@ -22,14 +21,6 @@ fn exec_shell() {
     }
 }
 
-fn exec_hello(){
-    if fork()==0{
-        let v = exec("00hello");
-        if v != 0 {
-            panic!("exec user shell failed")
-        }
-    }
-}
 
 fn init_loop() {
     let mut exit_code = 0;

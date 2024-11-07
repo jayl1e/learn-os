@@ -5,6 +5,11 @@ pub fn console_put_char(c: usize) {
     sbi_rt::legacy::console_putchar(c);
 }
 
+pub fn console_get_char() -> usize {
+    #[allow(deprecated)]
+    sbi_rt::legacy::console_getchar()
+}
+
 pub fn shut_down(failure: bool) -> ! {
     use sbi_rt::{system_reset, NoReason, Shutdown, SystemFailure};
     if !failure {

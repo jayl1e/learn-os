@@ -46,6 +46,7 @@ fn rust_main() -> ! {
     timer::set_next_trigger();
     trace!("start running");
     task::run_tasks();
+    // println!("hello");
     sbi::shut_down(false);
     panic!("should not run here");
 }

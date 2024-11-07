@@ -93,16 +93,6 @@ pub fn print_apps_info() {
     APP_MANAGER.exclusive_access().print_apps_info();
 }
 
-pub fn get_app_info(app_id: usize) -> AppInfo {
-    let m = APP_MANAGER.exclusive_access();
-    unsafe { m.get_app_info(app_id) }
-}
-
-pub fn get_num_app() -> usize {
-    let m = APP_MANAGER.exclusive_access();
-    m.num_app
-}
-
 pub fn get_app_info_by_name(name: &str) -> Option<AppInfo> {
     let m = APP_MANAGER.exclusive_access();
     m.get_app_info_by_name(name)

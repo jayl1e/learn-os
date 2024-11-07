@@ -2,11 +2,9 @@ use alloc::collections::vec_deque::VecDeque;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
-use log::debug;
 
-use crate::loader::{get_app_info, get_app_info_by_name, get_num_app, AppInfo};
+use crate::loader::{get_app_info_by_name, AppInfo};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT};
-use crate::println;
 use crate::sync::up::UPSafeCell;
 use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;

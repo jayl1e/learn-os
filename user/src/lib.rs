@@ -103,6 +103,7 @@ pub fn exec(path: &str) -> isize {
 }
 
 const FD_STDIN: usize = 0;
+const FD_STDOUT: usize = 1;
 
 pub fn read(fd: usize, buf: &mut [u8]) -> isize {
     loop {
@@ -123,6 +124,15 @@ pub fn get_char() -> Option<u8> {
     match read(FD_STDIN, &mut buf) {
         0=>None,
         1=>Some(buf[0]),
+        _other =>{
+            panic!("read stdin failed")
+        }
+    }
+}
+pub fn put_char(c: u8) {
+    let buf = [c; 1];
+    match write(FD_STDOUT, &buf) {
+        1=>{},
         _other =>{
             panic!("read stdin failed")
         }

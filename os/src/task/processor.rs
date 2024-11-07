@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     context::TaskContext,
-    task::{add_init_proc, fork, TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER},
+    task::{fork, TaskControlBlock, TaskManager, TaskStatus, TASK_MANAGER},
 };
 
 struct Processor {

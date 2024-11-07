@@ -1,7 +1,6 @@
 use core::str;
 
 use alloc::sync::Arc;
-use log::debug;
 
 use crate::loader::get_app_info_by_name;
 use crate::mm::{translate_ptr_mut, Writer};
@@ -10,6 +9,8 @@ use crate::task::{
     get_current_token, suspend_current_task,
 };
 use crate::{mm, println, timer};
+
+use super::{EAGAIN, EBADARG, ENOCHILDREN};
 
 #[allow(unreachable_code)]
 pub fn sys_exit(code: i32) -> ! {
@@ -90,12 +91,9 @@ pub fn sys_exec(ptr: *mut u8) -> isize {
             exec_current(app);
             0
         }
-        None => -1,
+        None => EBADARG,
     }
 }
-
-const EAGAIN: isize = -2;
-const ENOCHILDREN: isize = -3;
 
 pub fn sys_waitpid(pid: isize, code_ptr: *mut i32) -> isize {
     let current = get_current_task().unwrap();
@@ -106,9 +104,9 @@ pub fn sys_waitpid(pid: isize, code_ptr: *mut i32) -> isize {
             .iter()
             .all(|k| k.exclusive_access().get_pid() as isize != pid)
     {
-        return -1;
+        return EBADARG;
     }
-    let found = cur.children.iter().enumerate().find(|(idx, kid)| {
+    let found = cur.children.iter().enumerate().find(|(_idx, kid)| {
         let k = kid.exclusive_access();
         (pid == -1 || pid == k.get_pid() as isize) && k.exit_code().is_some()
     });
