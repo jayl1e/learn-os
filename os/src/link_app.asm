@@ -104,8 +104,8 @@ app_6_end:
     .global app_7_start
     .global app_7_end
 app_7_name:
-    .asciz "user_shell"
+    .asciz "shell"
     .align 3
 app_7_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/user_shell"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/shell"
 app_7_end:

@@ -23,6 +23,6 @@ name="init"
 file="target/riscv64gc-unknown-none-elf/release/init"
 
 [[bin]]
-name="user_shell"
-file="target/riscv64gc-unknown-none-elf/release/user_shell"
+name="shell"
+file="target/riscv64gc-unknown-none-elf/release/shell"
 

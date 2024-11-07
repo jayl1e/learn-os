@@ -59,6 +59,7 @@ fn readline(buf: &mut[u8])->Option<&str>{
                 break;
             },
             b'\x03'=>{
+                println!("^c");
                 return None;
             },
             b'\x7F'=>{
