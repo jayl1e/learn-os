@@ -44,6 +44,7 @@ pub fn sys_write(fd: usize, address: *const u8, len: usize) -> isize {
 pub fn sys_read(fd: usize, address: *mut u8, len: usize) -> isize {
     match fd {
         STDIN => {
+            // seems get_char will block
             let c = console_get_char();
             if c == 0 {
                 EAGAIN

@@ -33,8 +33,7 @@ impl PIDAllocator {
 }
 
 lazy_static! {
-    static ref PID_ALLOCATOR: UCell<PIDAllocator> =
-        unsafe { UCell::new(PIDAllocator::new()) };
+    static ref PID_ALLOCATOR: UCell<PIDAllocator> = unsafe { UCell::new(PIDAllocator::new()) };
 }
 
 pub struct PIDHandle(pub usize);
