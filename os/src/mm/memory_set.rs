@@ -14,7 +14,7 @@ use crate::{
     config::{KERNEL_STACK_LIMIT, USER_STACK_LIMIT},
     mm::address::PhysAddress,
     println,
-    sync::up::UPSafeCell,
+    sync::UCell,
 };
 
 use super::{
@@ -327,8 +327,8 @@ fn new_kernel_map() -> MemorySet {
 }
 
 lazy_static! {
-    pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> =
-        Arc::new(unsafe { UPSafeCell::new(new_kernel_map()) });
+    pub static ref KERNEL_SPACE: Arc<UCell<MemorySet>> =
+        Arc::new(unsafe { UCell::new(new_kernel_map()) });
 }
 
 #[allow(unused)]

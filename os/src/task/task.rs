@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 
 use crate::loader::{get_app_info_by_name, AppInfo};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddress, KERNEL_SPACE, TRAP_CONTEXT};
-use crate::sync::up::UPSafeCell;
+use crate::sync::UCell;
 use crate::trap::context::TrapContext;
 use crate::trap::trap_handler;
 
@@ -26,8 +26,8 @@ pub struct TaskControlBlock {
     pub status: TaskStatus,
     cx: TaskContext,
     app_info: AppInfo,
-    pub parent: Option<Weak<UPSafeCell<TaskControlBlock>>>,
-    pub children: Vec<Arc<UPSafeCell<TaskControlBlock>>>,
+    pub parent: Option<Weak<UCell<TaskControlBlock>>>,
+    pub children: Vec<Arc<UCell<TaskControlBlock>>>,
     pub inner: Option<TaskControlBlockInner>,
 }
 
@@ -91,7 +91,7 @@ impl TaskControlBlock {
     }
 }
 
-fn new_task(app: AppInfo) -> Arc<UPSafeCell<TaskControlBlock>> {
+fn new_task(app: AppInfo) -> Arc<UCell<TaskControlBlock>> {
     let status = TaskStatus::READY;
     let pid = PIDHandle::new();
     let kstack = KernelStack::new(&pid);
@@ -111,10 +111,10 @@ fn new_task(app: AppInfo) -> Arc<UPSafeCell<TaskControlBlock>> {
         inner: Some(block_inner),
     };
     block.exec(app);
-    Arc::new(unsafe { UPSafeCell::new(block) })
+    Arc::new(unsafe { UCell::new(block) })
 }
 
-pub fn fork(parent: Arc<UPSafeCell<TaskControlBlock>>) -> Arc<UPSafeCell<TaskControlBlock>> {
+pub fn fork(parent: Arc<UCell<TaskControlBlock>>) -> Arc<UCell<TaskControlBlock>> {
     let mut src = parent.exclusive_access();
     let mem_set = src.inner.as_ref().unwrap().mem_set.fork();
     let trap_ctx_ppn = mem_set
@@ -143,7 +143,7 @@ pub fn fork(parent: Arc<UPSafeCell<TaskControlBlock>>) -> Arc<UPSafeCell<TaskCon
     };
     //every the same except kernel sp
     block.get_trap_ctx().unwrap().kernel_sp = ksp;
-    let child = Arc::new(unsafe { UPSafeCell::new(block) });
+    let child = Arc::new(unsafe { UCell::new(block) });
     src.children.push(child.clone());
     child
 }
@@ -155,17 +155,17 @@ impl TaskControlBlockInner {
 }
 
 pub struct TaskManager {
-    tasks: VecDeque<Arc<UPSafeCell<TaskControlBlock>>>,
-    init_proc: Option<Arc<UPSafeCell<TaskControlBlock>>>,
+    tasks: VecDeque<Arc<UCell<TaskControlBlock>>>,
+    init_proc: Option<Arc<UCell<TaskControlBlock>>>,
 }
 
 lazy_static! {
-    pub static ref TASK_MANAGER: UPSafeCell<TaskManager> = {
+    pub static ref TASK_MANAGER: UCell<TaskManager> = {
         let tm = TaskManager {
             tasks: VecDeque::new(),
             init_proc: None,
         };
-        unsafe { UPSafeCell::new(tm) }
+        unsafe { UCell::new(tm) }
     };
 }
 
@@ -184,7 +184,7 @@ pub fn add_init_proc() {
     }
 }
 
-pub fn get_init_proc() -> Arc<UPSafeCell<TaskControlBlock>> {
+pub fn get_init_proc() -> Arc<UCell<TaskControlBlock>> {
     TASK_MANAGER
         .exclusive_access()
         .init_proc
@@ -194,10 +194,10 @@ pub fn get_init_proc() -> Arc<UPSafeCell<TaskControlBlock>> {
 }
 
 impl TaskManager {
-    pub fn add(&mut self, tcb: Arc<UPSafeCell<TaskControlBlock>>) {
+    pub fn add(&mut self, tcb: Arc<UCell<TaskControlBlock>>) {
         self.tasks.push_back(tcb);
     }
-    pub fn fetch(&mut self) -> Option<Arc<UPSafeCell<TaskControlBlock>>> {
+    pub fn fetch(&mut self) -> Option<Arc<UCell<TaskControlBlock>>> {
         self.tasks.pop_front()
     }
 }

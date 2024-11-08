@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 
 use crate::{
     mm::{kernel_stack_position, MapPermission, VirtAddress, KERNEL_SPACE},
-    sync::up::UPSafeCell,
+    sync::UCell,
 };
 
 struct PIDAllocator {
@@ -33,8 +33,8 @@ impl PIDAllocator {
 }
 
 lazy_static! {
-    static ref PID_ALLOCATOR: UPSafeCell<PIDAllocator> =
-        unsafe { UPSafeCell::new(PIDAllocator::new()) };
+    static ref PID_ALLOCATOR: UCell<PIDAllocator> =
+        unsafe { UCell::new(PIDAllocator::new()) };
 }
 
 pub struct PIDHandle(pub usize);

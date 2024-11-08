@@ -1,7 +1,7 @@
 use core::ffi;
 use lazy_static::lazy_static;
 
-use crate::{println, sync::up::UPSafeCell};
+use crate::{println, sync::UCell};
 
 pub const MAX_APP_NUM: usize = 16;
 
@@ -67,7 +67,7 @@ impl AppManager {
 }
 
 lazy_static! {
-    static ref APP_MANAGER: UPSafeCell<AppManager> = unsafe {
+    static ref APP_MANAGER: UCell<AppManager> = unsafe {
         extern "C" {
             pub fn _num_app();
         }
@@ -81,7 +81,7 @@ lazy_static! {
         let app_info_raw =
             core::slice::from_raw_parts(num_app_ptr.add(1) as *const AppInfoBuf, num_app);
         app_infos[..num_app].copy_from_slice(app_info_raw);
-        UPSafeCell::new(AppManager { num_app, app_infos })
+        UCell::new(AppManager { num_app, app_infos })
     };
 }
 

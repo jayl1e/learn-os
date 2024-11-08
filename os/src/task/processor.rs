@@ -8,7 +8,7 @@ use crate::{
     loader::AppInfo,
     println,
     sbi::shut_down,
-    sync::up::UPSafeCell,
+    sync::UCell,
     task::{switch::__switch, task::get_init_proc},
     trap::context::TrapContext,
 };
@@ -19,9 +19,9 @@ use super::{
 };
 
 struct Processor {
-    pub current: Option<Arc<UPSafeCell<TaskControlBlock>>>,
+    pub current: Option<Arc<UCell<TaskControlBlock>>>,
     pub idle_ctx: TaskContext,
-    pub tm: &'static UPSafeCell<TaskManager>,
+    pub tm: &'static UCell<TaskManager>,
 }
 
 impl Processor {
@@ -76,7 +76,7 @@ impl Processor {
 }
 
 lazy_static! {
-    static ref PROCESSOR: UPSafeCell<Processor> = unsafe { UPSafeCell::new(Processor::new()) };
+    static ref PROCESSOR: UCell<Processor> = unsafe { UCell::new(Processor::new()) };
 }
 
 pub fn run_tasks() {
@@ -178,6 +178,6 @@ pub fn exec_current(app: AppInfo) {
     t.exec(app);
 }
 
-pub fn get_current_task() -> Option<Arc<UPSafeCell<TaskControlBlock>>> {
+pub fn get_current_task() -> Option<Arc<UCell<TaskControlBlock>>> {
     PROCESSOR.exclusive_access().current.clone()
 }
