@@ -9,7 +9,7 @@ fn main() -> i32 {
     let content = "hello str";
     let fd = open(filename, OpenFlags::WRONLY | OpenFlags::CREATE);
     if fd < 0 {
-        println!("can not open file to write");
+        println!("can not open file to write, code: {}", fd);
         return 1;
     }
     let fd = fd as usize;
@@ -21,7 +21,7 @@ fn main() -> i32 {
     close(fd);
     let fd = open(filename, OpenFlags::RDONLY);
     if fd < 0 {
-        println!("can not open file to read");
+        println!("can not open file to read code: {}", fd);
         return 1;
     }
     let fd = fd as usize;

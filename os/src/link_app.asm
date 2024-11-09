@@ -3,7 +3,7 @@
     .section .data
     .global _num_app
 _num_app:
-    .quad 7
+    .quad 8
 
     .quad app_1_name
     .quad app_1_start
@@ -38,6 +38,11 @@ _num_app:
     .quad app_7_name
     .quad app_7_start
     .quad app_7_end
+    
+
+    .quad app_8_name
+    .quad app_8_start
+    .quad app_8_end
     
 
     .global app_1_name
@@ -94,18 +99,28 @@ app_5_end:
     .global app_6_start
     .global app_6_end
 app_6_name:
-    .asciz "init"
+    .asciz "file_test"
     .align 3
 app_6_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/init"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/file_test"
 app_6_end:
 
     .global app_7_name
     .global app_7_start
     .global app_7_end
 app_7_name:
-    .asciz "shell"
+    .asciz "init"
     .align 3
 app_7_start:
-    .incbin "../user/target/riscv64gc-unknown-none-elf/release/shell"
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/init"
 app_7_end:
+
+    .global app_8_name
+    .global app_8_start
+    .global app_8_end
+app_8_name:
+    .asciz "shell"
+    .align 3
+app_8_start:
+    .incbin "../user/target/riscv64gc-unknown-none-elf/release/shell"
+app_8_end:
