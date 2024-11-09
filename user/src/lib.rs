@@ -3,6 +3,7 @@
 #![feature(alloc_error_handler)]
 
 extern crate alloc;
+use bitflags::bitflags;
 use syscall::{sys_get_time, sys_yield};
 
 pub mod console;
@@ -61,7 +62,7 @@ pub fn get_time() -> isize {
 }
 
 const EAGAIN: isize = -2;
-pub const ENOCHILDREN:isize = -3;
+pub const ENOCHILDREN: isize = -3;
 pub fn wait(code: &mut i32) -> isize {
     loop {
         match syscall::sys_waitpid(-1, code as *mut i32) {
@@ -92,14 +93,37 @@ pub fn fork() -> isize {
 
 pub fn exec(path: &str) -> isize {
     let mut buf: [u8; 128] = [0; 128];
+    let ptr = ensure_cstr(path, &mut buf);
+    match ptr {
+        None => -1,
+        Some(cstr) => syscall::sys_exec(cstr),
+    }
+}
+
+fn ensure_cstr(path: &str, buf: &mut [u8]) -> Option<*const u8> {
     let len = path.len();
+    if len > 0 && path.as_bytes()[len - 1] == b'\0' {
+        return Some(path.as_ptr());
+    }
     if len >= buf.len() {
         println!("path is too long");
-        return -1;
+        return None;
     }
     buf[..len].copy_from_slice(path.as_bytes());
     buf[len] = 0;
-    syscall::sys_exec(buf.as_ptr())
+    Some(buf.as_ptr())
+}
+
+pub fn open(path: &str, flags: OpenFlags) -> isize {
+    let mut buf: [u8; 128] = [0; 128];
+    let ptr = ensure_cstr(path, &mut buf);
+    match ptr {
+        None => -1,
+        Some(cstr) => syscall::sys_open(cstr, flags.bits()),
+    }
+}
+pub fn close(fd: usize) -> isize {
+    syscall::sys_close(fd)
 }
 
 const FD_STDIN: usize = 0;
@@ -122,9 +146,9 @@ pub fn read(fd: usize, buf: &mut [u8]) -> isize {
 pub fn get_char() -> Option<u8> {
     let mut buf = [0u8; 1];
     match read(FD_STDIN, &mut buf) {
-        0=>None,
-        1=>Some(buf[0]),
-        _other =>{
+        0 => None,
+        1 => Some(buf[0]),
+        _other => {
             panic!("read stdin failed")
         }
     }
@@ -132,13 +156,23 @@ pub fn get_char() -> Option<u8> {
 pub fn put_char(c: u8) {
     let buf = [c; 1];
     match write(FD_STDOUT, &buf) {
-        1=>{},
-        _other =>{
+        1 => {}
+        _other => {
             panic!("read stdin failed")
         }
     }
 }
 
-pub fn get_pid()->isize{
+pub fn get_pid() -> isize {
     syscall::sys_get_pid()
+}
+
+bitflags! {
+    pub struct OpenFlags:u32{
+        const RDONLY=0;
+        const WRONLY=1;
+        const RDWR = 1<<1;
+        const CREATE=1<<9;
+        const TRUNC=1<<10;
+    }
 }

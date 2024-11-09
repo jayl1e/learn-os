@@ -19,6 +19,10 @@ name="04csr"
 file="target/riscv64gc-unknown-none-elf/release/04csr"
 
 [[bin]]
+name="file_test"
+file="target/riscv64gc-unknown-none-elf/release/file_test"
+
+[[bin]]
 name="init"
 file="target/riscv64gc-unknown-none-elf/release/init"
 

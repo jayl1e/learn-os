@@ -9,7 +9,9 @@ const SYSCALL_GET_TIME: usize = 201;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_EXEC: usize = 221;
-const SYSCALL_GETPID:usize = 172;
+const SYSCALL_OPEN: usize = 56;
+const SYSCALL_CLOSE: usize = 57;
+const SYSCALL_GETPID: usize = 172;
 
 pub fn sys_write(fd: usize, buf: &[u8]) -> isize {
     syscall(SYSCALL_WRITE, [fd, buf.as_ptr() as usize, buf.len()])
@@ -19,7 +21,7 @@ pub fn sys_read(fd: usize, buf: &mut [u8]) -> isize {
     syscall(SYSCALL_READ, [fd, buf.as_ptr() as usize, buf.len()])
 }
 pub fn sys_get_pid() -> isize {
-    syscall(SYSCALL_GETPID, [0;3])
+    syscall(SYSCALL_GETPID, [0; 3])
 }
 
 pub fn sys_exit(code: i32) -> isize {
@@ -50,6 +52,13 @@ pub fn sys_waitpid(pid: isize, code: *mut i32) -> isize {
 }
 pub fn sys_exec(path: *const u8) -> isize {
     syscall(SYSCALL_EXEC, [path as usize, 0, 0])
+}
+
+pub fn sys_open(path: *const u8, flag: u32) -> isize {
+    syscall(SYSCALL_OPEN, [path as usize, flag as usize, 0])
+}
+pub fn sys_close(fd: usize) -> isize {
+    syscall(SYSCALL_CLOSE, [fd, 0, 0])
 }
 
 fn syscall(id: usize, args: [usize; 3]) -> isize {

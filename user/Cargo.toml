@@ -9,6 +9,7 @@ doctest = false
 bench = false
 
 [dependencies]
+bitflags = "2.6.0"
 buddy_system_allocator = "0.11.0"
 riscv = "0.11.1"
 
@@ -57,6 +58,13 @@ bench = false
 [[bin]]
 name = "shell"
 path = "src/bin/shell.rs"
+test = false
+doctest = false
+bench = false
+
+[[bin]]
+name = "file_test"
+path = "src/bin/file_test.rs"
 test = false
 doctest = false
 bench = false

@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use user_lib::{self, get_time, println, yield_, get_pid};
+use user_lib::{self, get_pid, get_time, println, yield_};
 
 #[no_mangle]
 fn main() -> i32 {

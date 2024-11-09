@@ -13,7 +13,7 @@ fn main() -> i32 {
 }
 
 fn exec_shell() {
-    if fork()==0{
+    if fork() == 0 {
         let v = exec("shell");
         if v != 0 {
             panic!("exec user shell failed")
@@ -21,14 +21,13 @@ fn exec_shell() {
     }
 }
 
-
 fn init_loop() {
     let mut exit_code = 0;
     loop {
         let pid = wait(&mut exit_code);
         if pid > 0 {
             println!("[init] accept exit code {} from {}", exit_code, pid);
-        } else if pid == ENOCHILDREN{
+        } else if pid == ENOCHILDREN {
             println!("[init] no sub process found existing");
             break;
         } else {
