@@ -1,0 +1,23 @@
+name: os
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: env
+      run: rustup default nightly && rustup target add riscv64gc-unknown-none-elf
+    - name: Build
+      run: cargo build --verbose
+      working-directory: ./os
