@@ -1,4 +1,4 @@
-PROFILE ?= debug
+PROFILE ?= release
 build: remove_inc
 ifeq ($(PROFILE), debug)
 	LOG=DEBUG cargo build
