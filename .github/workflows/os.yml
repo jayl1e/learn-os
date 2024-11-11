@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: env
-      run: rustup default nightly && rustup target add riscv64gc-unknown-none-elf
+      run: rustup default nightly && rustup target add riscv64gc-unknown-none-elf && cargo install cargo-binutils && rustup component add llvm-tools
     - name: Build
       run: make build
       working-directory: ./os
