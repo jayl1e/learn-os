@@ -7,13 +7,13 @@ use crate::{
     device::BlkDev,
 };
 
-const MAGIC: u32 = 0x73666a18;
+const MAGIC: [u8; 4] = [b'\x18', b'j', b'f', b's'];
 const InodeSize: usize = 128;
 const InodePerBlock: usize = BlockSize / InodeSize;
 const BlockInBlock: usize = BlockSize / size_of::<u32>();
 #[repr(C)]
 struct SuperBlock {
-    magic: u32,
+    magic: [u8; 4],
     version: u32,
     pub total_blocks: u32,
     pub inode_blocks: u32,
@@ -60,8 +60,8 @@ fn test_size() {
 
 #[derive(Debug, PartialEq, Eq)]
 enum FileType {
-    IDLE = 0,
-    FreeBlock = 1,
+    IdleHead = 0,
+    BlockGC = 1,
     File = 2,
     Directory = 3,
 }
@@ -91,7 +91,7 @@ struct BlockIndicator<'a> {
 impl DiskInode {
     fn inc_size(&mut self, sz: u32, new_blocks: Vec<u32>, jfs: &JFS) -> IOResult<()> {
         assert!(sz > self.size);
-        let cur_block = Self::blocks(self.size);
+        let cur_block = Self::total_blocks(self.size);
         for (i, block) in new_blocks.into_iter().enumerate() {
             self.emplace_block(cur_block + i, block, jfs)?
         }
@@ -101,8 +101,8 @@ impl DiskInode {
     fn dec_size(&mut self, sz: u32, jfs: &JFS) -> IOResult<Vec<u32>> {
         assert!(sz < self.size);
         let mut rt = Vec::new();
-        let cur_block = Self::blocks(self.size);
-        let new_block = Self::blocks(sz);
+        let cur_block = Self::total_blocks(self.size);
+        let new_block = Self::total_blocks(sz);
         rt.reserve(cur_block - new_block);
         for b in (new_block..cur_block).rev() {
             let poped = self.pop_block(b, jfs)?;
@@ -205,19 +205,15 @@ impl DiskInode {
         self.replace_block_at(at, 0, fs)
     }
 
-    fn blocks(sz: u32) -> usize {
-        let mut ceil = (sz as usize).div_ceil(BlockSize);
-        let mut rt = ceil;
-        if ceil > DIRECT_BLOCKS {
-            rt += 1;
-            ceil -= DIRECT_BLOCKS;
+    fn total_blocks(sz: u32) -> usize {
+        let eblocks = (sz as usize).div_ceil(BlockSize);
+        if eblocks <= DIRECT_BLOCKS {
+            return eblocks;
         }
-        if ceil > BlockInBlock {
-            rt += 1;
-            ceil -= BlockInBlock
+        if eblocks <= DIRECT_BLOCKS + BlockInBlock {
+            return eblocks + 1;
         }
-        rt += ceil.div_ceil(BlockInBlock);
-        rt
+        eblocks + 1 + 1 + (eblocks - DIRECT_BLOCKS - BlockInBlock).div_ceil(BlockInBlock)
     }
 }
 
@@ -235,24 +231,24 @@ impl JFS {
             su.init(total_blocks, inode_blocks, data_blocks);
         });
         {
-            let idle_root_pos = s.get_inode_pos(0);
-            s.get_block(idle_root_pos.block_id)?.lock().write(
-                idle_root_pos.offset,
+            let idle_head = s.idle_head_pos();
+            s.get_block(idle_head.block_id)?.lock().write(
+                idle_head.offset,
                 |idle_root: &mut DiskInode| {
-                    idle_root.file_type = FileType::IDLE;
+                    idle_root.file_type = FileType::IdleHead;
                     idle_root.block1 = 0;
                 },
             );
         }
-        for inode_id in (3..s.inode_cnt()).rev() {
+        for inode_id in (2..s.inode_cnt()).rev() {
             s.dealloc_inode(inode_id)?;
         }
         {
-            let free_pos = s.get_inode_pos(1);
+            let free_pos = s.block_gc_pos();
             s.get_block(free_pos.block_id)?.lock().write(
                 free_pos.offset,
                 |free: &mut DiskInode| {
-                    free.file_type = FileType::FreeBlock;
+                    free.file_type = FileType::BlockGC;
                     free.size = 0;
                     free.block0s.fill(0);
                     free.block1 = 0;
@@ -264,7 +260,7 @@ impl JFS {
             s.dealloc_block(block_id)?;
         }
         {
-            let root_dir = s.get_inode_pos(2);
+            let root_dir = s.root_dir_pos();
             s.get_block(root_dir.block_id)?.lock().write(
                 root_dir.offset,
                 |root: &mut DiskInode| {
@@ -283,7 +279,7 @@ impl JFS {
     }
 
     fn root_dir(self: Arc<Self>) -> Inode {
-        let pos = self.get_inode_pos(2);
+        let pos = self.get_inode_pos(1);
         Inode { pos, fs: self }
     }
 
@@ -312,12 +308,29 @@ impl JFS {
         DiskPos { block_id, offset }
     }
 
+    fn idle_head_pos(&self) -> DiskPos {
+        DiskPos {
+            block_id: 0,
+            offset: 2 * InodeSize,
+        }
+    }
+
+    fn block_gc_pos(&self) -> DiskPos {
+        DiskPos {
+            block_id: 0,
+            offset: 3 * InodeSize,
+        }
+    }
+    fn root_dir_pos(&self) -> DiskPos {
+        self.get_inode_pos(0)
+    }
+
     fn alloc_inode(&self) -> Result<u32, IOError> {
-        let pos = self.get_inode_pos(0);
-        let blk_lk = self.get_block(pos.block_id)?;
+        let head_pos = self.idle_head_pos();
+        let head_blk_lk = self.get_block(head_pos.block_id)?;
         let mut next = 0;
-        let mut blk = blk_lk.lock();
-        blk.read(pos.offset, |inode: &DiskInode| {
+        let mut head_blk = head_blk_lk.lock();
+        head_blk.read(head_pos.offset, |inode: &DiskInode| {
             next = inode.block1;
         });
         if next == 0 {
@@ -325,47 +338,47 @@ impl JFS {
         }
         let next_pos = self.get_inode_pos(next);
         let mut next_next = 0;
-        if next_pos.block_id != pos.block_id {
+        if next_pos.block_id != head_pos.block_id {
             let nxt_blk = self.get_block(next_pos.block_id)?;
             nxt_blk.lock().read(next_pos.offset, |inode: &DiskInode| {
                 next_next = inode.block1;
             });
         } else {
-            blk.read(next_pos.offset, |inode: &DiskInode| {
+            head_blk.read(next_pos.offset, |inode: &DiskInode| {
                 next_next = inode.block1;
             });
         }
-        blk.write(pos.offset, |inode: &mut DiskInode| {
+        head_blk.write(head_pos.offset, |inode: &mut DiskInode| {
             inode.block1 = next_next;
         });
         Ok(next)
     }
 
     fn dealloc_inode(&self, inode_id: u32) -> Result<(), IOError> {
-        let pos = self.get_inode_pos(0);
-        let blk_lk = self.get_block(pos.block_id)?;
+        let head_pos = self.idle_head_pos();
+        let head_blk_lk = self.get_block(head_pos.block_id)?;
         let mut next_next = 0;
-        let mut blk = blk_lk.lock();
-        blk.read(pos.offset, |inode: &DiskInode| {
+        let mut head_blk = head_blk_lk.lock();
+        head_blk.read(head_pos.offset, |inode: &DiskInode| {
             next_next = inode.block1;
         });
 
         let next_pos = self.get_inode_pos(inode_id);
-        if next_pos.block_id != pos.block_id {
+        if next_pos.block_id != head_pos.block_id {
             let nxt_blk = self.get_block(next_pos.block_id)?;
             nxt_blk
                 .lock()
                 .write(next_pos.offset, |inode: &mut DiskInode| {
-                    inode.file_type = FileType::IDLE;
+                    inode.file_type = FileType::IdleHead;
                     inode.block1 = next_next;
                 });
         } else {
-            blk.write(next_pos.offset, |inode: &mut DiskInode| {
-                inode.file_type = FileType::IDLE;
+            head_blk.write(next_pos.offset, |inode: &mut DiskInode| {
+                inode.file_type = FileType::IdleHead;
                 inode.block1 = next_next;
             });
         }
-        blk.write(pos.offset, |inode: &mut DiskInode| {
+        head_blk.write(head_pos.offset, |inode: &mut DiskInode| {
             inode.block1 = inode_id;
         });
         Ok(())
@@ -385,7 +398,7 @@ impl JFS {
         panic!("should return after 5 times alloc retry")
     }
     fn _alloc_block(&self) -> IOResult<u32> {
-        let pos = self.get_inode_pos(1);
+        let pos = self.block_gc_pos();
         let blk_lk = self.get_block(pos.block_id)?;
         let mut blk = blk_lk.lock();
         let mut rt = Err(IOError::Unknown);
@@ -464,7 +477,7 @@ impl JFS {
     }
 
     fn dealloc_block(&self, block_id: u32) -> IOResult<()> {
-        let pos = self.get_inode_pos(1);
+        let pos = self.block_gc_pos();
         let blk_lk = self.get_block(pos.block_id)?;
         let mut blk = blk_lk.lock();
         let free: &mut DiskInode = blk.ref_mut(pos.offset);
@@ -526,10 +539,10 @@ impl JFS {
 
 #[cfg(test)]
 mod test {
-    use crate::cache::{sync_blocks, BlockCache};
+    use crate::cache::sync_blocks;
     use crate::device::test::{MemoryBlock, MemoryBlockInner};
     use crate::device::BlkDev;
-    use crate::jfs::{BlockInBlock, DiskInode, MAGIC};
+    use crate::jfs::{BlockInBlock, DiskInode, FileType, MAGIC};
     use crate::types::*;
     use alloc::sync::Arc;
     use alloc::vec;
@@ -548,54 +561,62 @@ mod test {
         });
         let fs = JFS::mkfs(dev, 2048, 31).unwrap();
         sync_blocks().unwrap();
-        let magic_arr = [b'\x18', b'j', b'f', b's'];
-        assert_eq!(magic_arr, blk_inner.blocks[0][..4]);
-        let inode = fs.get_inode_pos(2);
+        assert_eq!(MAGIC, blk_inner.blocks[0][..4]);
+        let inode = fs.root_dir_pos();
         let inode_blk = fs.get_block(inode.block_id).unwrap();
-        let blocks = vec![fs.alloc_block().unwrap(), fs.alloc_block().unwrap()];
+        let sz = (BlockSize * 29) as u32;
+        let blocks_needed = DiskInode::total_blocks(sz);
+        assert_eq!(30, blocks_needed);
+        let mut blocks = vec![];
+        for _ in 0..blocks_needed {
+            blocks.push(fs.alloc_block().unwrap());
+        }
+        println!("blocks {:?}", blocks);
+        panic!("block not valid"); //todo fix this
         inode_blk
             .lock()
             .write(inode.offset, |inode: &mut DiskInode| {
-                inode.inc_size(513, blocks, &fs).unwrap();
+                inode.inc_size(sz, blocks, &fs).unwrap();
             });
-        for inode_id in 0..fs.inode_cnt() {
-            let inode_pos = fs.get_inode_pos(inode_id);
-            let blk = fs.get_block(inode_pos.block_id).unwrap();
-            blk.lock().read(inode_pos.offset, |inode: &DiskInode| {
-                println!("inode: {}: {:?}", inode_id, inode);
-            });
-        }
-        print_blocks(2, fs);
+        print_blocks(0, &fs);
+        print_blocks(-1, &fs);
+        print_blocks(-2, &fs);
     }
-    fn print_blocks(inode: u32, fs: JFS) {
-        let free_pos = fs.get_inode_pos(inode);
-        let free_blk = fs.get_block(free_pos.block_id).unwrap();
-        let mut free_blk1 = 0;
-        let mut free_blk2 = 0;
-        free_blk.lock().read(free_pos.offset, |free: &DiskInode| {
-            println!("inode: {}: {:?}", inode, free);
-            free_blk1 = free.block1;
-            free_blk2 = free.block2;
+    fn print_blocks(inode_id: i32, fs: &JFS) {
+        let free_pos = match inode_id {
+            -1 => fs.block_gc_pos(),
+            -2 => fs.idle_head_pos(),
+            other => fs.get_inode_pos(other as u32),
+        };
+        let block = fs.get_block(free_pos.block_id).unwrap();
+        let mut block1 = 0;
+        let mut block2 = 0;
+        let mut is_idle = false;
+        block.lock().read(free_pos.offset, |inode: &DiskInode| {
+            println!("inode: {}: {:?}", inode_id, inode);
+            block1 = inode.block1;
+            block2 = inode.block2;
+            is_idle = inode.file_type == FileType::IdleHead;
         });
-        if free_blk1 == 0 {
+        if is_idle || block1 == 0 {
             return;
         }
-        let blk1 = fs.get_block(free_blk1).unwrap();
+        let blk1 = fs.get_block(block1).unwrap();
         blk1.lock().read(0, |bb: &[u32; BlockInBlock]| {
-            println!("block 1ptr {}: {:?}", free_blk1, bb);
+            println!("block 1 at {}: {:?}", block1, bb);
         });
-        if free_blk2 == 0 {
+        if block2 == 0 {
             return;
         }
-        let blk2 = fs.get_block(free_blk2).unwrap();
+        let blk2 = fs.get_block(block2).unwrap();
         let mut free_blk2_0 = 0;
         blk2.lock().read(0, |bb: &[u32; BlockInBlock]| {
-            println!("block 2ptr {}: {:?}", free_blk2, bb);
+            println!("block 2 at {}: {:?}", block2, bb);
             free_blk2_0 = bb[0];
         });
         let blk2_0 = fs.get_block(free_blk2_0).unwrap();
         blk2_0.lock().read(0, |bb: &[u32; BlockInBlock]| {
-            println!("block 2.0ptr {}: {:?}", free_blk2_0, bb);
+            println!("block 2.0 at {}: {:?}", free_blk2_0, bb);
         });
     }
 }
